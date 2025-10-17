@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Pemesanan Makanan</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f0f0f0;
+        }
+        
+        .header {
+            background-color: #EF5350;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .header-text {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 0;
+        }
+        
+        .hamburger {
+            font-size: 24px;
+            cursor: pointer;
+        }
+        
+        .container-main {
+            display: flex;
+            gap: 15px;
+            padding: 20px;
+            height: calc(100vh - 80px);
+        }
+        
+        .sidebar {
+            width: 180px;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+        
+        .menu-item {
+            background-color: #E8E8E8;
+            border: 1px solid #ddd;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+        
+        .menu-item:hover {
+            background-color: #D0D0D0;
+        }
+        
+        .menu-item.active {
+            background-color: #C0C0C0;
+            font-weight: bold;
+        }
+        
+        .content-area {
+            flex: 1;
+            display: flex;
+            gap: 15px;
+        }
+        
+        .menu-section {
+            flex: 1;
+        }
+        
+        .search-box {
+            background-color: white;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+        
+        .menu-card {
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            height: 325px;
+            width: 325px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            transition: box-shadow 0.3s;
+        }
+        
+        .menu-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .menu-card-image {
+            width: 100%;
+            height: 100px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 12px;
+        }
+        
+        .keranjang-section {
+            width: 280px;
+            background-color: white;
+            border-radius: 5px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .keranjang-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .subtotal-section {
+            margin-bottom: 20px;
+        }
+        
+        .subtotal-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+        
+        .subtotal-label {
+            font-weight: 500;
+        }
+        
+        .subtotal-value {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .btn-primary-custom {
+            background-color: #4FC3F7;
+            border: 1px solid #4FC3F7;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            margin-bottom: 10px;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-primary-custom:hover {
+            background-color: #29B6F6;
+            text-decoration: none;
+            color: white;
+        }
+        
+        .btn-danger-custom {
+            background-color: #EF5350;
+            border: 1px solid #EF5350;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-danger-custom:hover {
+            background-color: #E53935;
+            text-decoration: none;
+            color: white;
+        }
+        
+        .empty-cart {
+            text-align: center;
+            color: #999;
+            font-size: 14px;
+            margin: 40px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <span class="hamburger">☰</span>
+        <p class="header-text">SISTEM PEMESANAN MAKANAN</p>
+    </div>
+    
+    <!-- Main Container -->
+    <div class="container-main">
+        <!-- Sidebar Menu -->
+        <div class="sidebar">
+            <div class="menu-item active">SEMUA</div>
+            <div class="menu-item">PROMO</div>
+            <div class="menu-item">PAKET KOMBO</div>
+            <div class="menu-item">MAKANAN UTAMA</div>
+            <div class="menu-item">SOUP</div>
+            <div class="menu-item">MINUMAN</div>
+            <div class="menu-item">SIDE DISH</div>
+            <div class="menu-item">DESSERT</div>
+            <div class="menu-item">SEASONAL</div>
+        </div>
+        
+        <!-- Content Area -->
+        <div class="content-area">
+            <!-- Menu Section -->
+            <div class="menu-section">
+                <!-- Search Box -->
+                <div class="search-box">
+                    <input type="text" placeholder="Cari Menu">
+                </div>
+                
+                <!-- Menu Grid -->
+                <div class="menu-grid">
+
+                    <!--promo 6-->
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+
+                    <!--paket kombo 7-->
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+
+                    <!--makanan utama 8-->
+                    <div class="menu-card">
+                        <img src="https://www.spiritriau.com/photo/berita/dir092020/_3615_Makan-Siang-dengan-Ayam-Kungpao--Sedap-Menggoda-Selera-.webp" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="https://awsimages.detik.net.id/community/media/visual/2022/02/14/resep-daging-sapi-lada-hitam_43.jpeg?w=1200" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="https://asset.kompas.com/crops/EQPEsF9MzwBOiRzKIbeWd4mRvhc=/0x8:1000x675/1200x800/data/photo/2023/11/22/655d5cf8cc269.jpeg" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="https://asset.kompas.com/crops/SaLWJi2NABt1w6TzEQ5KCSZy1k4=/23x0:1000x652/1200x800/data/photo/2021/01/22/600a67c8be421.jpg" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="https://i.ytimg.com/vi/dA01_8DbiU8/hq720.jpg?sqp=-oaymwEhCK4FEIIDSFryq4qpAxMIARUAAAAAGAElAADIQj0AgKJD&rs=AOn4CLCiHwkz97_me0on1LgxXZ384lEJYw" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="https://awsimages.detik.net.id/content/2005/04/20/285/nasgorXONCo.jpg" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="https://www.unileverfoodsolutions.co.id/dam/ufs-id/recipes/Peking%20Duck.jpg" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="https://i.ytimg.com/vi/yuVHXxw_HIU/maxresdefault.jpg" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+
+                    <!--soup 6-->
+                    <div class="menu-card">
+                        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRrRrLdVrdT9Kfg0OWaExbr2RW5Cbiarhns8Q&s" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="https://asset.kompas.com/crops/e_ZBNagZZwZoDmistIgVrFefzfs=/95x102:895x636/1200x800/data/photo/2022/11/07/6368e43a32389.jpg" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="https://img-global.cpcdn.com/recipes/aab7fc1c596e0b4f/680x781cq80/tom-yam-soup-foto-resep-utama.jpg" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="https://asset.kompas.com/crops/wNTnI11iN5Di1lKYnlY3N2BdcVI=/0x0:1000x667/1200x800/data/photo/2021/11/18/6195bb6e3a913.jpg" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="https://img-global.cpcdn.com/recipes/2031d4fffb138539/1200x630cq80/photo.jpg" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="https://awsimages.detik.net.id/community/media/visual/2021/10/07/resep-sup-tofu-dan-sayuran_43.jpeg?w=1200" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+
+                    <!--minuman 8-->
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+
+                    <!--side dish 7-->
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+
+                    <!--dessert 4-->
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+
+                    <!--seasonal 4-->
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+                    <div class="menu-card">
+                        <img src="" alt="Gambar Menu" style="max-width: 100%; max-height: 200px;">
+                    </div>
+
+                </div>
+            </div>
+            
+            <!-- Keranjang Section -->
+            <div class="keranjang-section">
+                <div class="keranjang-title">Keranjang</div>
+                
+                <div class="empty-cart">
+                    Keranjang kosong
+                </div>
+                
+                <div class="subtotal-section" style="margin-top: auto;">
+                    <div class="subtotal-row">
+                        <span class="subtotal-label">subtotal</span>
+                        <span class="subtotal-value">Rp.0</span>
+                    </div>
+                    <button class="btn-primary-custom w-100">Bayar</button>
+                    <button class="btn-danger-custom w-100">Bersihkan Keranjang</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
