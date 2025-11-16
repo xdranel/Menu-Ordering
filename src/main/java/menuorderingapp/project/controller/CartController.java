@@ -7,6 +7,7 @@ import menuorderingapp.project.model.dto.ApiResponse;
 import menuorderingapp.project.model.dto.CartItemRequest;
 //import menuorderingapp.project.model.dto.CartResponse;
 import menuorderingapp.project.model.dto.CartItemResponse;
+import menuorderingapp.project.model.dto.CartResponse;
 import menuorderingapp.project.service.MenuService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -31,60 +32,60 @@ public class CartController extends BaseController {
 
     // ========== API ENDPOINTS ==========
 
-//    // Add item to cart
-//    @PostMapping("/api/cart/add")
-//    @ResponseBody
-//    public ResponseEntity<ApiResponse<CartResponse>> addToCart(
-//            @Valid @RequestBody CartItemRequest request,
-//            HttpSession session) {
-//        try {
-//            // Get or create cart from session
-//            ShoppingCart cart = getCartFromSession(session);
-//
-//            // Get menu details
-//            Optional<Menu> menuOpt = menuService.getMenuById(request.getMenuId());
-//            if (menuOpt.isEmpty()) {
-//                return error("Menu tidak ditemukan");
-//            }
-//
-//            Menu menu = menuOpt.get();
-//            if (!menu.getAvailable()) {
-//                return error("Menu tidak tersedia");
-//            }
-//
-//            // Add or update cart item
-//            CartItem existingItem = cart.getItems().get(request.getMenuId());
-//            if (existingItem != null) {
-//                existingItem.setQuantity(existingItem.getQuantity() + request.getQuantity());
-//            } else {
-//                CartItem newItem = new CartItem(
-//                        request.getMenuId(),
-//                        menu.getName(),
-//                        menu.getCurrentPrice(),
-//                        request.getQuantity(),
-//                        menu.getImageUrl()
-//                );
-//                cart.getItems().put(request.getMenuId(), newItem);
-//            }
-//
-//            session.setAttribute(CART_SESSION_KEY, cart);
-//
-//            CartResponse response = buildCartResponse(cart);
-//            return success("Item berhasil ditambahkan ke keranjang", response);
-//
-//        } catch (Exception e) {
-//            return error("Gagal menambahkan item: " + e.getMessage());
-//        }
-//    }
+    // Add item to cart
+    @PostMapping("/api/cart/add")
+    @ResponseBody
+    public ResponseEntity<ApiResponse<CartResponse>> addToCart(
+            @Valid @RequestBody CartItemRequest request,
+            HttpSession session) {
+        try {
+            // Get or create cart from session
+            ShoppingCart cart = getCartFromSession(session);
+
+            // Get menu details
+            Optional<Menu> menuOpt = menuService.getMenuById(request.getMenuId());
+            if (menuOpt.isEmpty()) {
+                return error("Menu tidak ditemukan");
+            }
+
+            Menu menu = menuOpt.get();
+            if (!menu.getAvailable()) {
+                return error("Menu tidak tersedia");
+            }
+
+            // Add or update cart item
+            CartItem existingItem = cart.getItems().get(request.getMenuId());
+            if (existingItem != null) {
+                existingItem.setQuantity(existingItem.getQuantity() + request.getQuantity());
+            } else {
+                CartItem newItem = new CartItem(
+                        request.getMenuId(),
+                        menu.getName(),
+                        menu.getCurrentPrice(),
+                        request.getQuantity(),
+                        menu.getImageUrl()
+                );
+                cart.getItems().put(request.getMenuId(), newItem);
+            }
+
+            session.setAttribute(CART_SESSION_KEY, cart);
+
+            CartResponse response = buildCartResponse(cart);
+            return success("Item berhasil ditambahkan ke keranjang", response);
+
+        } catch (Exception e) {
+            return error("Gagal menambahkan item: " + e.getMessage());
+        }
+    }
 
     // Get cart contents
-//    @GetMapping("/api/cart")
-//    @ResponseBody
-//    public ResponseEntity<ApiResponse<CartResponse>> getCart(HttpSession session) {
-//        ShoppingCart cart = getCartFromSession(session);
-//        CartResponse response = buildCartResponse(cart);
-//        return success(response);
-//    }
+    @GetMapping("/api/cart")
+    @ResponseBody
+    public ResponseEntity<ApiResponse<CartResponse>> getCart(HttpSession session) {
+        ShoppingCart cart = getCartFromSession(session);
+        CartResponse response = buildCartResponse(cart);
+        return success(response);
+    }
 
     // Get cart item count
     @GetMapping("/api/cart/count")
@@ -101,58 +102,58 @@ public class CartController extends BaseController {
     }
 
     // Update cart item quantity
-//    @PutMapping("/api/cart/update/{menuId}")
-//    @ResponseBody
-//    public ResponseEntity<ApiResponse<CartResponse>> updateCartItem(
-//            @PathVariable Long menuId,
-//            @RequestParam Integer quantity,
-//            HttpSession session) {
-//        try {
-//            if (quantity < 1) {
-//                return error("Quantity harus minimal 1");
-//            }
-//
-//            ShoppingCart cart = getCartFromSession(session);
-//            CartItem item = cart.getItems().get(menuId);
-//
-//            if (item == null) {
-//                return error("Item tidak ditemukan di keranjang");
-//            }
-//
-//            item.setQuantity(quantity);
-//            session.setAttribute(CART_SESSION_KEY, cart);
-//
-//            CartResponse response = buildCartResponse(cart);
-//            return success("Quantity berhasil diupdate", response);
-//
-//        } catch (Exception e) {
-//            return error("Gagal update quantity: " + e.getMessage());
-//        }
-//    }
+    @PutMapping("/api/cart/update/{menuId}")
+    @ResponseBody
+    public ResponseEntity<ApiResponse<CartResponse>> updateCartItem(
+            @PathVariable Long menuId,
+            @RequestParam Integer quantity,
+            HttpSession session) {
+        try {
+            if (quantity < 1) {
+                return error("Quantity harus minimal 1");
+            }
+
+            ShoppingCart cart = getCartFromSession(session);
+            CartItem item = cart.getItems().get(menuId);
+
+            if (item == null) {
+                return error("Item tidak ditemukan di keranjang");
+            }
+
+            item.setQuantity(quantity);
+            session.setAttribute(CART_SESSION_KEY, cart);
+
+            CartResponse response = buildCartResponse(cart);
+            return success("Quantity berhasil diupdate", response);
+
+        } catch (Exception e) {
+            return error("Gagal update quantity: " + e.getMessage());
+        }
+    }
 
     // Remove item from cart
-//    @DeleteMapping("/api/cart/remove/{menuId}")
-//    @ResponseBody
-//    public ResponseEntity<ApiResponse<CartResponse>> removeFromCart(
-//            @PathVariable Long menuId,
-//            HttpSession session) {
-//        try {
-//            ShoppingCart cart = getCartFromSession(session);
-//            CartItem removedItem = cart.getItems().remove(menuId);
-//
-//            if (removedItem == null) {
-//                return error("Item tidak ditemukan di keranjang");
-//            }
-//
-//            session.setAttribute(CART_SESSION_KEY, cart);
-//
-//            CartResponse response = buildCartResponse(cart);
-//            return success("Item berhasil dihapus dari keranjang", response);
-//
-//        } catch (Exception e) {
-//            return error("Gagal menghapus item: " + e.getMessage());
-//        }
-//    }
+    @DeleteMapping("/api/cart/remove/{menuId}")
+    @ResponseBody
+    public ResponseEntity<ApiResponse<CartResponse>> removeFromCart(
+            @PathVariable Long menuId,
+            HttpSession session) {
+        try {
+            ShoppingCart cart = getCartFromSession(session);
+            CartItem removedItem = cart.getItems().remove(menuId);
+
+            if (removedItem == null) {
+                return error("Item tidak ditemukan di keranjang");
+            }
+
+            session.setAttribute(CART_SESSION_KEY, cart);
+
+            CartResponse response = buildCartResponse(cart);
+            return success("Item berhasil dihapus dari keranjang", response);
+
+        } catch (Exception e) {
+            return error("Gagal menghapus item: " + e.getMessage());
+        }
+    }
 
     // Clear entire cart
     @DeleteMapping("/api/cart/clear")
@@ -165,12 +166,12 @@ public class CartController extends BaseController {
     }
 
     // Show cart page
-//    @GetMapping("/cart")
-//    public String showCartPage(Model model, HttpSession session) {
-//        ShoppingCart cart = getCartFromSession(session);
-//        model.addAttribute("cart", buildCartResponse(cart));
-//        return "customer/cart";
-//    }
+    @GetMapping("/cart")
+    public String showCartPage(Model model, HttpSession session) {
+        ShoppingCart cart = getCartFromSession(session);
+        model.addAttribute("cart", buildCartResponse(cart));
+        return "customer/cart";
+    }
 
     // ========== HELPER METHODS ==========
 
@@ -183,27 +184,27 @@ public class CartController extends BaseController {
         return cart;
     }
 
-//    private CartResponse buildCartResponse(ShoppingCart cart) {
-//        List<CartItemResponse> itemResponses = cart.getItems().values().stream()
-//                .map(this::convertToResponse)
-//                .collect(Collectors.toList());
-//
-//        BigDecimal subtotal = cart.getItems().values().stream()
-//                .map(item -> item.getPrice().multiply(new BigDecimal(item.getQuantity())))
-//                .reduce(BigDecimal.ZERO, BigDecimal::add);
-//
-//        int totalItems = cart.getItems().values().stream()
-//                .mapToInt(CartItem::getQuantity)
-//                .sum();
-//
-//        CartResponse response = new CartResponse();
-//        response.setItems(itemResponses);
-//        response.setSubtotal(subtotal);
-//        response.setTotal(subtotal);
-//        response.setTotalItems(totalItems);
-//
-//        return response;
-//    }
+    private CartResponse buildCartResponse(ShoppingCart cart) {
+        List<CartItemResponse> itemResponses = cart.getItems().values().stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+
+        BigDecimal subtotal = cart.getItems().values().stream()
+                .map(item -> item.getPrice().multiply(new BigDecimal(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        int totalItems = cart.getItems().values().stream()
+                .mapToInt(CartItem::getQuantity)
+                .sum();
+
+        CartResponse response = new CartResponse();
+        response.setItems(itemResponses);
+        response.setSubtotal(subtotal);
+        response.setTotal(subtotal);
+        response.setTotalItems(totalItems);
+
+        return response;
+    }
 
     private CartItemResponse convertToResponse(CartItem item) {
         CartItemResponse response = new CartItemResponse();

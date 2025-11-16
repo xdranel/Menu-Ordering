@@ -218,21 +218,54 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.success && data.data) {
                     const count = data.data.count;
-                    const cartBadge = document.querySelector('.cart-count-badge');
-                    if (cartBadge) {
-                        cartBadge.textContent = count;
-                        cartBadge.style.display = count > 0 ? 'inline-block' : 'none';
-                    }
-
-                    // Update cart button text if exists
-                    const cartButton = document.querySelector('.btn-cart');
-                    if (cartButton && count > 0) {
-                        cartButton.classList.add('btn-cart-active');
+                    // Update cart count badge in header
+                    const cartCountElement = document.getElementById('cartCount');
+                    if (cartCountElement) {
+                        cartCountElement.textContent = count;
+                        cartCountElement.style.display = count > 0 ? 'inline-block' : 'none';
                     }
                 }
             })
             .catch(error => console.error('Error updating cart count:', error));
     }
+
+    // ========== CLEAR CART FUNCTION ==========
+    window.clearCart = function() {
+        if (!confirm('Apakah Anda yakin ingin mengosongkan keranjang?')) {
+            return;
+        }
+
+        // Get CSRF token
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        if (csrfToken && csrfHeader) {
+            headers[csrfHeader] = csrfToken;
+        }
+
+        fetch('/customer/api/cart/clear', {
+            method: 'DELETE',
+            headers: headers
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Keranjang berhasil dikosongkan', 'success');
+                    updateCartCount();
+
+                    // Reload page if on cart page
+                    if (window.location.pathname.includes('/cart')) {
+                        location.reload();
+                    }
+                } else {
+                    showNotification('Gagal mengosongkan keranjang', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Gagal mengosongkan keranjang', 'error');
+            });
+    };
 
     // ========== INITIALIZE CART COUNT ON PAGE LOAD ==========
     updateCartCount();

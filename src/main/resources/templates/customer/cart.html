@@ -2,6 +2,8 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head}">
     <title>Keranjang - ChopChop Restaurant</title>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
 </head>
 <body>
 <!-- Customer Header -->
@@ -68,5 +70,8 @@
         </div>
     </div>
 </div>
+
+<!-- Load cart page script -->
+<script th:src="@{/js/cart-page.js}"></script>
 </body>
 </html>
