@@ -2,6 +2,8 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head}">
     <title>Pembayaran - ChopChop Restaurant</title>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
 </head>
 <body>
 <!-- Customer Header -->
@@ -35,6 +37,9 @@
                     </div>
 
                     <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                        <button class="btn btn-success" onclick="simulatePayment()" id="simulatePaymentBtn">
+                            <i class="fas fa-check-circle me-2"></i> Simulasi Pembayaran (TEST)
+                        </button>
                         <button class="btn btn-primary" onclick="checkPaymentStatus()">
                             <i class="fas fa-sync-alt me-2"></i> Cek Status Pembayaran
                         </button>
@@ -58,5 +63,8 @@
         </div>
     </div>
 </div>
+
+<!-- Load customer app script for payment functionality -->
+<script th:src="@{/js/customer-app.js}"></script>
 </body>
 </html>

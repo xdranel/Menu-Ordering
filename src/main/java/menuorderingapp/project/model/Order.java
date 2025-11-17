@@ -57,7 +57,7 @@ public class Order {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
-        if (orderItems == null) {
+        if (orderNumber == null) {
             orderNumber = "ORD-" + System.currentTimeMillis();
         }
     }

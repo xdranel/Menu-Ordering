@@ -236,6 +236,39 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
+    // ========== CLEAR CART FUNCTION ==========
+    window.clearCart = function() {
+        if (!confirm('Apakah Anda yakin ingin mengosongkan keranjang?')) {
+            return;
+        }
+
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        if (csrfToken && csrfHeader) {
+            headers[csrfHeader] = csrfToken;
+        }
+
+        fetch('/customer/api/cart/clear', {
+            method: 'DELETE',
+            headers: headers
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Keranjang berhasil dikosongkan', 'success');
+                    // Reload cart items
+                    loadCartItems();
+                } else {
+                    showNotification('Gagal mengosongkan keranjang', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Gagal mengosongkan keranjang', 'error');
+            });
+    };
+
     // ========== CREATE ORDER FUNCTION ==========
     window.createOrder = function() {
         const customerNameInput = document.getElementById('customerName');
@@ -260,6 +293,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Build order data
                 const orderData = {
+                    orderType: 'CUSTOMER_SELF',
                     customerName: customerName,
                     items: cartResponse.data.items.map(item => ({
                         menuId: item.menuId,

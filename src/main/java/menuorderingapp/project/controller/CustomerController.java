@@ -64,6 +64,15 @@ public class CustomerController extends BaseController{
         return "customer/menu";
     }
 
+    // Payment Page
+    @GetMapping("/payment")
+    public String showPaymentPage(Model model, @RequestParam(required = false) String order) {
+        if (order != null) {
+            model.addAttribute("orderNumber", order);
+        }
+        return "customer/payment";
+    }
+
     // Get Menu Items (AJAX)
     @GetMapping("/api/menus")
     @ResponseBody
@@ -210,6 +219,37 @@ public class CustomerController extends BaseController{
 
         } catch (Exception e) {
             return error("Failed to generate QR code: " + e.getMessage());
+        }
+    }
+
+    // Simulate Payment (FOR TESTING ONLY - Remove in production)
+    @PostMapping("/api/orders/{orderNumber}/simulate-payment")
+    @ResponseBody
+    public ResponseEntity<ApiResponse<PaymentResponse>> simulatePayment(@PathVariable String orderNumber) {
+        try {
+            Optional<Order> orderOpt = orderService.getOrderByNumber(orderNumber);
+            if (orderOpt.isEmpty()) {
+                return notFound("Order not found");
+            }
+
+            Order order = orderOpt.get();
+
+            // Update order status to PAID and CONFIRMED
+            order.setPaymentStatus(Order.PaymentStatus.PAID);
+            order.setPaymentMethod(Order.PaymentMethod.QR_CODE);
+            order.setStatus(Order.OrderStatus.CONFIRMED);
+
+            Order updatedOrder = orderService.createOrder(order);
+
+            PaymentResponse paymentResponse = new PaymentResponse();
+            paymentResponse.setSuccess(true);
+            paymentResponse.setOrderNumber(orderNumber);
+            paymentResponse.setMessage("Payment simulated successfully (TEST MODE)");
+
+            return success(paymentResponse);
+
+        } catch (Exception e) {
+            return error("Failed to simulate payment: " + e.getMessage());
         }
     }
 

@@ -529,15 +529,23 @@ class CustomerApp {
         if (!this.currentOrder) return;
 
         try {
-            const order = await this.checkPaymentStatus(this.currentOrder);
-            if (order && order.paymentStatus === 'PAID') {
-                this.stopPaymentStatusChecker();
-                this.showToast('Pembayaran berhasil! Pesanan Anda sedang diproses.', 'success');
-                setTimeout(() => {
-                    window.location.href = '/customer/menu?payment=success';
-                }, 2000);
+            // Fetch order from API
+            const response = await fetch(`/customer/api/orders/${this.currentOrder}`);
+            const data = await response.json();
+
+            if (data.success && data.data) {
+                const order = data.data;
+                if (order.paymentStatus === 'PAID') {
+                    this.stopPaymentStatusChecker();
+                    this.showToast('Pembayaran berhasil! Pesanan Anda sedang diproses.', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/customer/menu?payment=success';
+                    }, 2000);
+                } else {
+                    this.showToast('Pembayaran belum diterima. Silakan coba lagi dalam beberapa saat.', 'info');
+                }
             } else {
-                this.showToast('Pembayaran belum diterima. Silakan coba lagi dalam beberapa saat.', 'info');
+                this.showToast('Gagal memeriksa status pembayaran.', 'error');
             }
         } catch (error) {
             console.error('Error checking payment status:', error);
@@ -560,5 +568,72 @@ class CustomerApp {
 }
 
 // Initialize customer app
-const
-    customerApp = new CustomerApp();
+const customerApp = new CustomerApp();
+
+// ========== SIMULATE PAYMENT (FOR TESTING ONLY) ==========
+window.simulatePayment = async function() {
+    const orderNumber = new URLSearchParams(window.location.search).get('order');
+
+    if (!orderNumber) {
+        alert('Nomor pesanan tidak ditemukan');
+        return;
+    }
+
+    if (!confirm('Simulasi pembayaran untuk testing?\n\nDalam production, pembayaran akan diproses oleh payment gateway.')) {
+        return;
+    }
+
+    const btn = document.getElementById('simulatePaymentBtn');
+    const originalHTML = btn ? btn.innerHTML : '';
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Memproses...';
+    }
+
+    try {
+        // Get CSRF token
+        const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
+
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+
+        // Add CSRF token if available
+        if (csrfToken && csrfHeader) {
+            headers[csrfHeader] = csrfToken;
+        }
+
+        const response = await fetch(`/customer/api/orders/${orderNumber}/simulate-payment`, {
+            method: 'POST',
+            headers: headers
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert('✅ Pembayaran berhasil disimulasikan!\n\nStatus: PAID\nPesanan Anda sedang diproses.');
+
+            // Reload page immediately to show updated status
+            window.location.reload();
+        } else {
+            alert('❌ Gagal: ' + (data.message || 'Unknown error'));
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
+        }
+    } catch (error) {
+        console.error('Error simulating payment:', error);
+        alert('❌ Terjadi kesalahan: ' + error.message);
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHTML;
+        }
+    }
+};
