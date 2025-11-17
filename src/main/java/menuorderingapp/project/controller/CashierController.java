@@ -62,6 +62,44 @@ public class CashierController extends BaseController{
         return "cashier/dashboard";
     }
 
+    // Dashboard Stats API
+    @GetMapping("/api/dashboard/stats")
+    @ResponseBody
+    public ResponseEntity<ApiResponse<DashboardStatsResponse>> getDashboardStats(HttpSession session) {
+        CashierUserDetails currentCashier = SecurityUtils.getCurrentCashier();
+        if (currentCashier == null) {
+            return unauthorized("Not authenticated");
+        }
+
+        try {
+            // Get dashboard statistics
+            long pendingOrders = orderService.getPendingOrdersCount();
+            double todayRevenue = orderService.getTotalRevenueToday();
+            List<Order> recentOrders = orderService.getTodayOrders();
+            long availableMenus = menuService.getAvailableMenus().size();
+            long todayOrdersCount = (long) recentOrders.size();
+
+            // Convert orders to OrderResponse DTOs
+            List<OrderResponse> orderResponses = recentOrders.stream()
+                    .map(this::convertToOrderResponse)
+                    .collect(Collectors.toList());
+
+            // Build response
+            DashboardStatsResponse stats = new DashboardStatsResponse(
+                    todayRevenue,
+                    todayOrdersCount,
+                    pendingOrders,
+                    availableMenus,
+                    orderResponses
+            );
+
+            return success(stats);
+
+        } catch (Exception e) {
+            return error("Failed to fetch dashboard stats: " + e.getMessage());
+        }
+    }
+
     // Orders Management Page
     @GetMapping("/orders")
     public String showOrdersPage(Model model, HttpSession session) {

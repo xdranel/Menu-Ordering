@@ -33,6 +33,8 @@ public class SecurityConfig {
                         // Public endpoints (customer facing)
                         .requestMatchers(
                                 "/",
+                                "/login",           // Convenient redirect to /auth/login
+                                "/customer",        // Redirect to /customer/menu
                                 "/customer/**",
                                 "/auth/login",
                                 "/auth/api/login",
