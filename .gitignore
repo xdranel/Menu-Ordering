@@ -58,7 +58,6 @@ Thumbs.db
 *.tmp
 temp/
 
-
 ### MD for my ownself ###
 docs/DEPLOYMENT_SECURITY.md
 docs/SECURITY_REVIEW_SUMMARY.md
