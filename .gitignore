@@ -59,10 +59,4 @@ Thumbs.db
 temp/
 
 ### MD for my ownself ###
-docs/DEPLOYMENT_SECURITY.md
-docs/SECURITY_REVIEW_SUMMARY.md
-docs/DEPLOYMENT.md
-docs/HOSTINGER_DEPLOYMENT.md
-docs/AUTO_DEPLOY_WEBHOOK.md
-docs/DATABASE_MANAGEMENT.md
-docs/QUICK_START_VPS.md
+docs/forme/*.md

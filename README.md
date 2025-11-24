@@ -73,7 +73,7 @@ A restaurant ordering system built with Spring Boot, featuring real-time order m
    - Customer: http://localhost:8080
    - Cashier: http://localhost:8080/cashier/login
 
-See [INSTALLATION.md](docs/INSTALLATION.md) for detailed setup instructions.
+See [INSTALLATION.md](docs/forme/INSTALLATION.md) for detailed setup instructions.
 
 ## Default Credentials
 
@@ -108,8 +108,8 @@ menu-ordering-app/
 
 ## Documentation
 
-- [INSTALLATION.md](docs/INSTALLATION.md) - Detailed installation guide
-- [DEPLOYMENT_SECURITY.md](docs/DEPLOYMENT_SECURITY.md) - Security guide for production deployment
+- [INSTALLATION.md](docs/forme/INSTALLATION.md) - Detailed installation guide
+- [DEPLOYMENT_SECURITY.md](docs/forme/DEPLOYMENT_SECURITY.md) - Security guide for production deployment
 - [docs/API.md](docs/API.md) - REST API reference
 
 ## Key Endpoints
