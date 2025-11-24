@@ -2,6 +2,7 @@ package menuorderingapp.project.controller;
 
 import menuorderingapp.project.model.*;
 import menuorderingapp.project.model.dto.*;
+import menuorderingapp.project.service.InvoiceService;
 import menuorderingapp.project.service.MenuService;
 import menuorderingapp.project.service.OrderService;
 import menuorderingapp.project.service.PaymentService;
@@ -19,19 +20,20 @@ import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/customer")
-public class CustomerController extends BaseController{
+public class CustomerController extends BaseController {
 
     private final MenuService menuService;
     private final OrderService orderService;
     private final PaymentService paymentService;
+    private final InvoiceService invoiceService;
 
-    public CustomerController(MenuService menuService, OrderService orderService, PaymentService paymentService) {
+    public CustomerController(MenuService menuService, OrderService orderService, PaymentService paymentService, InvoiceService invoiceService) {
         this.menuService = menuService;
         this.orderService = orderService;
         this.paymentService = paymentService;
+        this.invoiceService = invoiceService;
     }
 
-    // Customer Menu Page
     @GetMapping("/menu")
     public String showMenuPage(Model model,
                                @RequestParam(required = false) String category,
@@ -64,7 +66,7 @@ public class CustomerController extends BaseController{
         return "customer/menu";
     }
 
-    // Payment Page
+
     @GetMapping("/payment")
     public String showPaymentPage(Model model, @RequestParam(required = false) String order) {
         if (order != null) {
@@ -73,7 +75,7 @@ public class CustomerController extends BaseController{
         return "customer/payment";
     }
 
-    // Get Menu Items (AJAX)
+
     @GetMapping("/api/menus")
     @ResponseBody
     public ResponseEntity<ApiResponse<List<MenuResponse>>> getAvailableMenus(
@@ -96,7 +98,7 @@ public class CustomerController extends BaseController{
         return success(menuResponses);
     }
 
-    // Create New Order (Customer Self-Ordering)
+
     @PostMapping("/api/orders")
     @ResponseBody
     public ResponseEntity<ApiResponse<OrderResponse>> createOrder(@Valid @RequestBody OrderRequest orderRequest) {
@@ -126,7 +128,7 @@ public class CustomerController extends BaseController{
         }
     }
 
-    // Add Item to Order
+
     @PostMapping("/api/orders/{orderId}/items")
     @ResponseBody
     public ResponseEntity<ApiResponse<OrderResponse>> addItemToOrder(
@@ -143,7 +145,7 @@ public class CustomerController extends BaseController{
         }
     }
 
-    // Remove Item from Order
+
     @DeleteMapping("/api/orders/{orderId}/items/{itemId}")
     @ResponseBody
     public ResponseEntity<ApiResponse<OrderResponse>> removeItemFromOrder(
@@ -160,7 +162,7 @@ public class CustomerController extends BaseController{
         }
     }
 
-    // Update Item Quantity
+
     @PutMapping("/api/orders/{orderId}/items/{itemId}")
     @ResponseBody
     public ResponseEntity<ApiResponse<OrderResponse>> updateItemQuantity(
@@ -178,7 +180,7 @@ public class CustomerController extends BaseController{
         }
     }
 
-    // Get Order Details
+
     @GetMapping("/api/orders/{orderNumber}")
     @ResponseBody
     public ResponseEntity<ApiResponse<OrderResponse>> getOrder(@PathVariable String orderNumber) {
@@ -195,7 +197,7 @@ public class CustomerController extends BaseController{
         }
     }
 
-    // Generate QR Code for Payment
+
     @GetMapping("/api/orders/{orderNumber}/qr-code")
     @ResponseBody
     public ResponseEntity<ApiResponse<PaymentResponse>> generateQRCode(@PathVariable String orderNumber) {
@@ -221,7 +223,7 @@ public class CustomerController extends BaseController{
         }
     }
 
-    // Simulate Payment (FOR TESTING ONLY - Remove in production)
+
     @PostMapping("/api/orders/{orderNumber}/simulate-payment")
     @ResponseBody
     public ResponseEntity<ApiResponse<PaymentResponse>> simulatePayment(@PathVariable String orderNumber) {
@@ -251,7 +253,7 @@ public class CustomerController extends BaseController{
         }
     }
 
-    // Process Payment
+
     @PostMapping("/api/payments")
     @ResponseBody
     public ResponseEntity<ApiResponse<PaymentResponse>> processPayment(@Valid @RequestBody PaymentRequest paymentRequest) {
@@ -276,6 +278,12 @@ public class CustomerController extends BaseController{
             paymentResponse.setMessage(paymentSuccess ? "Payment successful" : "Payment failed");
 
             if (paymentSuccess) {
+                // Generate invoice for customer order (cashier is null for customer_self orders)
+                Optional<Order> orderOpt = orderService.getOrderByNumber(paymentRequest.getOrderNumber());
+                if (orderOpt.isPresent()) {
+                    invoiceService.generateInvoice(orderOpt.get(), null);
+                }
+
                 return success(paymentResponse);
             } else {
                 return error("Payment processing failed");

@@ -15,23 +15,14 @@ public class OrderWebSocketController {
         this.messagingTemplate = messagingTemplate;
     }
 
-    /**
-     * Broadcast order update to all connected clients
-     */
     public void broadcastOrderUpdate(OrderResponse order) {
         messagingTemplate.convertAndSend("/topic/orders", order);
     }
 
-    /**
-     * Broadcast dashboard stats update
-     */
     public void broadcastDashboardUpdate() {
         messagingTemplate.convertAndSend("/topic/dashboard", "refresh");
     }
 
-    /**
-     * Test endpoint for WebSocket connection
-     */
     @MessageMapping("/ping")
     @SendTo("/topic/pong")
     public String handlePing(String message) {

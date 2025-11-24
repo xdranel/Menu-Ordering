@@ -27,14 +27,19 @@ public class AuthController extends BaseController {
         this.cashierService = cashierService;
     }
 
-    // Show Login Page
     @GetMapping("/login")
     public String showLoginPage(Model model) {
         model.addAttribute("loginRequest", new LoginRequest());
         return "auth/login";
     }
 
-    // Process Login
+    @RequestMapping("/access-denied")
+    @ResponseBody
+    public ResponseEntity<ApiResponse<Void>> accessDenied() {
+        return error(org.springframework.http.HttpStatus.FORBIDDEN,
+            "Access denied: CSRF token validation failed. Please refresh the page.");
+    }
+
     @PostMapping("/login")
     public String processLogin(@Valid @ModelAttribute LoginRequest loginRequest,
                                BindingResult bindingResult,
@@ -50,7 +55,6 @@ public class AuthController extends BaseController {
             String sessionToken = authService.login(loginRequest.getUsername(), loginRequest.getPassword());
             Cashier cashier = authService.getCashierFromSession(sessionToken);
 
-            // Store session info
             session.setAttribute("sessionToken", sessionToken);
             session.setAttribute("cashier", convertToCashierDto(cashier));
             session.setAttribute("cashierId", cashier.getId());
@@ -64,7 +68,6 @@ public class AuthController extends BaseController {
         }
     }
 
-    // API Login (for AJAX)
     @PostMapping("/api/login")
     @ResponseBody
     public ResponseEntity<ApiResponse<LoginResponse>> apiLogin(@Valid @RequestBody LoginRequest loginRequest) {
@@ -84,7 +87,6 @@ public class AuthController extends BaseController {
         }
     }
 
-    // Logout
     @PostMapping("/logout")
     public String logout(HttpSession session) {
         String sessionToken = (String) session.getAttribute("sessionToken");
@@ -95,7 +97,6 @@ public class AuthController extends BaseController {
         return "redirect:/auth/login";
     }
 
-    // API Logout
     @PostMapping("/api/logout")
     @ResponseBody
     public ResponseEntity<ApiResponse<Void>> apiLogout(HttpServletRequest request) {
@@ -106,7 +107,6 @@ public class AuthController extends BaseController {
         return success("Logged out successfully", null);
     }
 
-    // Validate Session
     @GetMapping("/api/validate")
     @ResponseBody
     public ResponseEntity<ApiResponse<CashierDto>> validateSession(HttpServletRequest request) {

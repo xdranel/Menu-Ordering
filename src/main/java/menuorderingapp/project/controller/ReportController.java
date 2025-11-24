@@ -19,7 +19,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/reports")
-public class ReportController extends BaseController{
+public class ReportController extends BaseController {
 
     private final ReportService reportService;
 
@@ -27,13 +27,12 @@ public class ReportController extends BaseController{
         this.reportService = reportService;
     }
 
-    // Generate Sales Report
+
     @PostMapping("/sales")
     public ResponseEntity<ApiResponse<Map<String, Object>>> generateSalesReport(
             @RequestBody ReportRequest reportRequest,
             HttpSession session) {
 
-        // Check authentication
         if (session.getAttribute("cashier") == null) {
             return unauthorized("Not authenticated");
         }
@@ -50,7 +49,7 @@ public class ReportController extends BaseController{
         }
     }
 
-    // Get Daily Report
+
     @GetMapping("/daily")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getDailyReport(
             @RequestParam String date,
@@ -70,7 +69,7 @@ public class ReportController extends BaseController{
         }
     }
 
-    // Get Top Selling Items
+
     @GetMapping("/top-items")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getTopSellingItems(
             @RequestParam String startDate,
@@ -93,7 +92,7 @@ public class ReportController extends BaseController{
         }
     }
 
-    // Export Report as PDF
+
     @GetMapping("/export")
     public ResponseEntity<Resource> exportReport(
             @RequestParam String startDate,
@@ -106,12 +105,12 @@ public class ReportController extends BaseController{
         }
 
         try {
-            // Generate report data
+
             LocalDateTime start = LocalDate.parse(startDate).atStartOfDay();
             LocalDateTime end = LocalDate.parse(endDate).atTime(23, 59, 59);
             Map<String, Object> report = reportService.getSalesReport(start, end);
 
-            // Generate PDF (placeholder - would integrate with PDF library)
+
             String pdfContent = generatePdfContent(report);
             byte[] pdfBytes = pdfContent.getBytes();
 
@@ -131,8 +130,8 @@ public class ReportController extends BaseController{
     }
 
     private String generatePdfContent(Map<String, Object> report) {
-        // Placeholder PDF generation
-        // In real implementation, use libraries like iText, Apache PDFBox, or JasperReports
+
+
         StringBuilder content = new StringBuilder();
         content.append("SALES REPORT\n");
         content.append("Generated on: ").append(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)).append("\n\n");

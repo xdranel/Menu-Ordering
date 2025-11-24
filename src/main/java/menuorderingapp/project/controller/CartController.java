@@ -5,7 +5,6 @@ import jakarta.validation.Valid;
 import menuorderingapp.project.model.Menu;
 import menuorderingapp.project.model.dto.ApiResponse;
 import menuorderingapp.project.model.dto.CartItemRequest;
-//import menuorderingapp.project.model.dto.CartResponse;
 import menuorderingapp.project.model.dto.CartItemResponse;
 import menuorderingapp.project.model.dto.CartResponse;
 import menuorderingapp.project.service.MenuService;
