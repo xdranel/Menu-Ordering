@@ -1,12 +1,11 @@
 class CustomerApp {
     constructor() {
-        this.cart = JSON.parse(localStorage.getItem('restaurantCart')) || [];
         this.currentOrder = null;
         this.init();
     }
 
     init() {
-        this.updateCartCount();
+        this.loadCartFromSession();
         this.setupEventListeners();
         this.loadMenuData();
 
@@ -16,6 +15,18 @@ class CustomerApp {
         } else if (window.location.pathname.includes('/payment')) {
             this.loadPaymentPage();
         }
+    }
+
+    loadCartFromSession() {
+        // Load cart count from server
+        fetch('/customer/api/cart/count')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.updateCartSidebar();
+                }
+            })
+            .catch(error => console.error('Error loading cart:', error));
     }
 
     setupEventListeners() {
@@ -225,36 +236,9 @@ class CustomerApp {
     }
 
     addToCart(menuId, quantity = 1) {
-        const menuItem = window.menuData?.find(item => item.id === menuId);
-        if (!menuItem) {
-            this.showToast('Menu item not found', 'error');
-            return;
-        }
-
-        if (!menuItem.available) {
-            this.showToast('This item is currently unavailable', 'warning');
-            return;
-        }
-
-        const existingItem = this.cart.find(item => item.menuId === menuId);
-        if (existingItem) {
-            existingItem.quantity += quantity;
-        } else {
-            this.cart.push({
-                menuId: menuId,
-                quantity: quantity,
-                name: menuItem.name,
-                price: menuItem.currentPrice,
-                image: menuItem.imageUrl
-            });
-        }
-
-        this.saveCart();
-        this.updateCartCount();
-        this.showToast(`${quantity} x ${menuItem.name} added to cart`, 'success');
-
-        // Update cart dropdown if it exists
-        this.updateCartDropdown();
+        // This method is now handled by menu-filter.js
+        // Keeping for backwards compatibility
+        console.log('addToCart called - delegating to menu-filter.js');
     }
 
     updateCartCount() {
@@ -262,6 +246,120 @@ class CustomerApp {
         if (cartCount) {
             const totalItems = this.cart.reduce((sum, item) => sum + item.quantity, 0);
             cartCount.textContent = totalItems;
+        }
+
+        // Update cart sidebar
+        this.updateCartSidebar();
+    }
+
+    updateCartSidebar() {
+        const cartItemsDisplay = document.getElementById('cartItemsDisplay');
+        const cartSubtotal = document.getElementById('cartSubtotal');
+
+        if (!cartItemsDisplay) return;
+
+        // Fetch cart data from server
+        fetch('/customer/api/cart')
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success || !data.data || data.data.items.length === 0) {
+                    cartItemsDisplay.innerHTML = `
+                        <div class="empty-cart">
+                            <i class="fas fa-shopping-cart"></i>
+                            <p>Keranjang kosong</p>
+                        </div>
+                    `;
+                    if (cartSubtotal) cartSubtotal.textContent = 'Rp.0';
+
+                    // Update mobile cart summary
+                    this.updateMobileCartSummary(0, 0);
+                    return;
+                }
+
+                let html = '';
+                const cart = data.data;
+
+                cart.items.forEach(item => {
+                    const itemTotal = item.price * item.quantity;
+
+                    html += `
+                        <div class="cart-item">
+                            <div class="cart-item-name">${item.menuName}</div>
+                            <div class="cart-item-details">
+                                <span>${item.quantity} x Rp ${item.price.toLocaleString('id-ID')}</span>
+                                <span class="fw-bold">Rp ${itemTotal.toLocaleString('id-ID')}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                cartItemsDisplay.innerHTML = html;
+                if (cartSubtotal) {
+                    cartSubtotal.textContent = `Rp.${cart.total.toLocaleString('id-ID')}`;
+                }
+
+                // Update mobile cart summary
+                this.updateMobileCartSummary(cart.totalItems, cart.total);
+
+                // Setup cart buttons
+                this.setupCartButtons();
+            })
+            .catch(error => {
+                console.error('Error loading cart:', error);
+            });
+    }
+
+    updateMobileCartSummary(itemCount, total) {
+        const mobileCartSummary = document.getElementById('mobileCartSummary');
+        const mobileCartCount = document.getElementById('mobileCartCount');
+        const mobileCartTotal = document.getElementById('mobileCartTotal');
+
+        if (mobileCartCount) {
+            mobileCartCount.textContent = itemCount;
+        }
+
+        if (mobileCartTotal) {
+            mobileCartTotal.textContent = `Rp ${total.toLocaleString('id-ID')}`;
+        }
+
+        // Show/hide mobile cart summary based on screen size and cart content
+        if (mobileCartSummary) {
+            if (itemCount > 0 && window.innerWidth <= 992) {
+                mobileCartSummary.style.display = 'block';
+            } else {
+                mobileCartSummary.style.display = 'none';
+            }
+        }
+    }
+
+    setupCartButtons() {
+        const checkoutBtn = document.getElementById('checkoutBtn');
+        const clearCartBtn = document.getElementById('clearCartBtn');
+        const mobileCheckoutBtn = document.getElementById('mobileCheckoutBtn');
+        const mobileCleanCartBtn = document.getElementById('mobileCleanCartBtn');
+
+        if (checkoutBtn) {
+            checkoutBtn.onclick = () => {
+                window.location.href = '/customer/cart';
+            };
+        }
+
+        if (clearCartBtn) {
+            clearCartBtn.onclick = () => {
+                this.clearCart();
+            };
+        }
+
+        if (mobileCheckoutBtn) {
+            mobileCheckoutBtn.onclick = () => {
+                window.location.href = '/customer/cart';
+            };
+        }
+
+        if (mobileCleanCartBtn) {
+            mobileCleanCartBtn.onclick = () => {
+                this.clearCart();
+            };
         }
     }
 
@@ -322,15 +420,29 @@ class CustomerApp {
     }
 
     clearCart() {
-        this.cart = [];
-        this.saveCart();
-        this.updateCartCount();
-        this.updateCartDropdown();
-        this.showToast('Cart cleared', 'info');
-    }
+        if (!confirm('Yakin ingin mengosongkan keranjang?')) {
+            return;
+        }
 
-    saveCart() {
-        localStorage.setItem('restaurantCart', JSON.stringify(this.cart));
+        fetch('/customer/api/cart/clear', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.showToast('Keranjang berhasil dikosongkan', 'success');
+                    this.updateCartSidebar();
+                } else {
+                    this.showToast('Gagal mengosongkan keranjang', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                this.showToast('Gagal mengosongkan keranjang', 'error');
+            });
     }
 
     showToast(message, type = 'info') {
@@ -569,6 +681,7 @@ class CustomerApp {
 
 // Initialize customer app
 const customerApp = new CustomerApp();
+window.customerApp = customerApp;
 
 // ========== SIMULATE PAYMENT (FOR TESTING ONLY) ==========
 window.simulatePayment = async function() {

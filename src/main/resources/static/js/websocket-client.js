@@ -16,10 +16,7 @@
             this.connected = true;
             this.reconnectAttempts = 0;
 
-           
             this.subscribeToOrders();
-
-           
             this.onConnected();
         }, (error) => {
             console.log('WebSocket connection error: ', error);
@@ -48,13 +45,11 @@
     }
 
     handleDashboardUpdate() {
-       
         if (window.cashierApp && typeof window.cashierApp.loadDashboardData === 'function') {
             console.log('Refreshing dashboard data...');
             window.cashierApp.loadDashboardData();
         }
 
-       
         if (window.cashierApp && typeof window.cashierApp.loadOrdersPage === 'function') {
             const ordersTable = document.getElementById('ordersTableBody');
             if (ordersTable) {
@@ -65,12 +60,10 @@
     }
 
     handleOrderUpdate(orderUpdate) {
-       
         if (typeof window.orderUpdateHandler === 'function') {
             window.orderUpdateHandler(orderUpdate);
         }
 
-       
         this.showNotification(`Order ${orderUpdate.orderNumber} updated: ${orderUpdate.status}`);
     }
 
@@ -79,7 +72,6 @@
     }
 
     showNotification(message, type = 'info') {
-       
         const toast = document.createElement('div');
         toast.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
         toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
@@ -90,7 +82,6 @@
         `;
         document.body.appendChild(toast);
 
-       
         setTimeout(() => {
             if (toast.parentNode) {
                 toast.remove();

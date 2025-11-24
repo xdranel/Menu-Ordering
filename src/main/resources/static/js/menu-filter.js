@@ -1,10 +1,8 @@
-// Menu Category Filter Script with Backend Cart Integration
-// Location: src/main/resources/static/js/menu-filter.js
+// Menu filtering and cart integration
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Get all category buttons
     const categoryButtons = document.querySelectorAll('.category-btn');
-    const menuItems = document.querySelectorAll('.menu-card');
+    const menuItems = document.querySelectorAll('.menu-item');
     const searchInput = document.getElementById('searchInput');
     const searchButton = document.getElementById('searchButton');
 
@@ -18,9 +16,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const itemCategory = item.getAttribute('data-category');
 
             if (category === 'SEMUA' || itemCategory === category) {
-                item.closest('.col-xl-3').style.display = 'block';
+                item.style.display = 'block';
             } else {
-                item.closest('.col-xl-3').style.display = 'none';
+                item.style.display = 'none';
             }
         });
     }
@@ -30,24 +28,26 @@ document.addEventListener('DOMContentLoaded', function() {
         const term = searchTerm.toLowerCase();
 
         menuItems.forEach(item => {
-            const menuName = item.querySelector('.card-title').textContent.toLowerCase();
-            const menuDesc = item.querySelector('.card-text').textContent.toLowerCase();
+            const menuName = item.querySelector('.menu-name')?.textContent.toLowerCase() || '';
+            const menuDesc = item.querySelector('.menu-description')?.textContent.toLowerCase() || '';
 
             if (menuName.includes(term) || menuDesc.includes(term)) {
-                item.closest('.col-xl-3').style.display = 'block';
+                item.style.display = 'block';
             } else {
-                item.closest('.col-xl-3').style.display = 'none';
+                item.style.display = 'none';
             }
         });
     }
 
     // ========== CATEGORY BUTTON CLICKS ==========
-    categoryButtons.forEach(button => {
+    // Support both old and new category link structures
+    const categoryLinks = document.querySelectorAll('.category-btn, .category-link');
+    categoryLinks.forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
 
             // Remove active class from all buttons
-            categoryButtons.forEach(btn => btn.classList.remove('active'));
+            categoryLinks.forEach(btn => btn.classList.remove('active'));
 
             // Add active class to clicked button
             this.classList.add('active');
@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', function() {
         searchInput.addEventListener('input', function() {
             if (this.value === '') {
                 menuItems.forEach(item => {
-                    item.closest('.col-xl-3').style.display = 'block';
+                    item.style.display = 'block';
                 });
             }
         });
@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Get menu name for notification
             const card = this.closest('.menu-card');
-            const menuName = card.querySelector('.card-title').textContent;
+            const menuName = card.querySelector('.menu-name')?.textContent || card.querySelector('.card-title')?.textContent || 'Menu';
 
             // Disable button to prevent double-click
             this.disabled = true;
@@ -170,6 +170,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
                         // Update cart count in header
                         updateCartCount();
+
+                        // Update cart sidebar if available
+                        if (window.customerApp && typeof window.customerApp.updateCartSidebar === 'function') {
+                            window.customerApp.updateCartSidebar();
+                        }
                     } else {
                         // Error from backend
                         showNotification(data.message || 'Gagal menambahkan ke keranjang', 'error');

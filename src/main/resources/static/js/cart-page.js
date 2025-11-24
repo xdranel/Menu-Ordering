@@ -1,12 +1,9 @@
-// Cart Page Script - Loads cart from backend session
-// Location: src/main/resources/static/js/cart-page.js
+// Cart page - loads cart from backend session
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Get CSRF token for security
     const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
     const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
 
-    // Load cart on page load
     loadCartItems();
 
     // ========== LOAD CART ITEMS FROM BACKEND ==========
@@ -45,44 +42,29 @@ document.addEventListener('DOMContentLoaded', function() {
         let html = '';
         cartData.items.forEach(item => {
             html += `
-                <div class="card cart-item mb-3" data-menu-id="${item.menuId}">
-                    <div class="card-body">
-                        <div class="row align-items-center">
-                            ${item.imageUrl ? `
-                            <div class="col-md-2">
-                                <img src="${item.imageUrl}" alt="${item.menuName}"
-                                     class="img-fluid rounded" style="max-height: 80px;">
-                            </div>
-                            ` : ''}
-                            <div class="col-md-${item.imageUrl ? '4' : '6'}">
-                                <h5 class="card-title mb-1">${item.menuName}</h5>
-                                <p class="text-muted mb-0">Rp ${item.price.toLocaleString('id-ID')} / item</p>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="input-group input-group-sm">
-                                    <button class="btn btn-outline-secondary btn-qty-decrease"
-                                            data-menu-id="${item.menuId}">
-                                        <i class="fas fa-minus"></i>
-                                    </button>
-                                    <input type="number" class="form-control text-center"
-                                           value="${item.quantity}" min="1" max="99" readonly>
-                                    <button class="btn btn-outline-secondary btn-qty-increase"
-                                            data-menu-id="${item.menuId}">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="col-md-2 text-end">
-                                <strong class="h5 mb-0">Rp ${item.subtotal.toLocaleString('id-ID')}</strong>
-                            </div>
-                            <div class="col-md-1 text-end">
-                                <button class="btn btn-outline-danger btn-sm btn-remove"
-                                        data-menu-id="${item.menuId}">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
+                <div class="cart-item-card" data-menu-id="${item.menuId}">
+                    ${item.imageUrl ? `
+                        <img src="${item.imageUrl}" alt="${item.menuName}" class="cart-item-image">
+                    ` : ''}
+                    <div class="cart-item-details">
+                        <div class="cart-item-name">${item.menuName}</div>
+                        <div class="cart-item-price">Rp ${item.price.toLocaleString('id-ID')} / item</div>
                     </div>
+                    <div class="cart-item-quantity">
+                        <button class="qty-btn-cart btn-qty-decrease" data-menu-id="${item.menuId}">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <input type="number" class="qty-input-cart" value="${item.quantity}" min="1" max="99">
+                        <button class="qty-btn-cart btn-qty-increase" data-menu-id="${item.menuId}">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <div class="cart-item-total">
+                        Rp ${item.subtotal.toLocaleString('id-ID')}
+                    </div>
+                    <button class="btn-remove-item btn-remove" data-menu-id="${item.menuId}">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </div>
             `;
         });
@@ -139,10 +121,13 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.btn-qty-increase').forEach(button => {
             button.addEventListener('click', function() {
                 const menuId = parseInt(this.getAttribute('data-menu-id'));
-                const card = this.closest('.cart-item');
-                const input = card.querySelector('input[type="number"]');
+                const card = this.closest('.cart-item-card');
+                const input = card.querySelector('.qty-input-cart');
                 const newQuantity = parseInt(input.value) + 1;
-                updateQuantity(menuId, newQuantity);
+
+                if (newQuantity <= 99) {
+                    updateQuantity(menuId, newQuantity);
+                }
             });
         });
 
@@ -150,8 +135,8 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.btn-qty-decrease').forEach(button => {
             button.addEventListener('click', function() {
                 const menuId = parseInt(this.getAttribute('data-menu-id'));
-                const card = this.closest('.cart-item');
-                const input = card.querySelector('input[type="number"]');
+                const card = this.closest('.cart-item-card');
+                const input = card.querySelector('.qty-input-cart');
                 const currentQuantity = parseInt(input.value);
 
                 if (currentQuantity > 1) {
@@ -159,6 +144,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     removeItem(menuId);
                 }
+            });
+        });
+
+        // Quantity input change
+        document.querySelectorAll('.qty-input-cart').forEach(input => {
+            input.addEventListener('change', function() {
+                const menuId = parseInt(this.closest('.cart-item-card').getAttribute('data-menu-id'));
+                let newQuantity = parseInt(this.value);
+
+                // Validate quantity
+                if (isNaN(newQuantity) || newQuantity < 1) {
+                    newQuantity = 1;
+                } else if (newQuantity > 99) {
+                    newQuantity = 99;
+                }
+
+                this.value = newQuantity;
+                updateQuantity(menuId, newQuantity);
             });
         });
 

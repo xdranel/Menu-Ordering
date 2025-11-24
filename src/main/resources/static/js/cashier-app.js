@@ -15,7 +15,12 @@ class CashierApp {
         this.loadOrdersPage();
         this.setupReportsPage();
         this.setupRealTimeUpdates();
+        this.setupMenuFilters(); // Setup menu filters on settings page
         this.availableMenus = [];
+        this.availableCategories = [];
+        this.selectedOrderItems = [];
+        this.currentMenuFilter = '';
+        this.currentCategoryFilter = '';
         this.orderItemCounter = 0;
     }
 
@@ -23,10 +28,29 @@ class CashierApp {
         const newOrderModal = document.getElementById('newOrderModal');
         if (newOrderModal) {
             newOrderModal.addEventListener('show.bs.modal', async () => {
-                // Load menus on modal open
+                // Reset the modal
+                this.selectedOrderItems = [];
+                document.getElementById('customerName').value = '';
+
+                // Load menus and categories
                 if (this.availableMenus.length === 0) {
                     await this.loadAvailableMenus();
                 }
+                await this.loadCategories();
+
+                // Populate the modal
+                this.populateMenuGrid();
+                this.populateCategoryFilter();
+                this.updateSelectedItemsDisplay();
+                this.setupMenuSearch();
+                this.setupCategoryFilter();
+            });
+
+            newOrderModal.addEventListener('hidden.bs.modal', () => {
+                // Clean up when modal closes
+                this.selectedOrderItems = [];
+                this.currentMenuFilter = '';
+                this.currentCategoryFilter = '';
             });
         }
 
@@ -100,6 +124,9 @@ class CashierApp {
         if (tokenMeta && headerMeta) {
             this.csrfToken = tokenMeta.getAttribute('content');
             this.csrfHeader = headerMeta.getAttribute('content');
+            console.log('CSRF Token loaded:', this.csrfHeader, '=', this.csrfToken ? this.csrfToken.substring(0, 20) + '...' : 'null');
+        } else {
+            console.error('CSRF Token not found in meta tags!');
         }
     }
 
@@ -288,6 +315,8 @@ class CashierApp {
                     throw new Error('Unknown action');
             }
 
+            console.log('Sending request with CSRF headers:', this.getCsrfHeaders());
+
             const response = await fetch(url, {
                 method: method,
                 headers: {
@@ -307,16 +336,24 @@ class CashierApp {
                     this.loadDashboardData(); // Refresh dashboard
                 }
 
-                
+
                 if (window.webSocketClient) {
                     window.webSocketClient.sendOrderUpdate(data.data);
                 }
             } else {
-                this.showToast(`Gagal update pesanan: ${data.message}`, 'error');
+                // Check if it's a CSRF error
+                if (response.status === 403 && data.message && data.message.includes('CSRF')) {
+                    this.showToast('Session expired. Please refresh the page.', 'error');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    this.showToast(`Gagal update pesanan: ${data.message}`, 'error');
+                }
             }
         } catch (error) {
             console.error('Error handling order action:', error);
-            this.showToast('An error occurred', 'error');
+            this.showToast('Terjadi kesalahan: ' + error.message, 'error');
         }
     }
 
@@ -381,23 +418,134 @@ class CashierApp {
     }
 
     // Orders Page Functions
-    async loadOrdersPage() {
+    async loadOrdersPage(filterType = 'today', customDate = null, statusFilter = 'all', paymentFilter = 'all') {
         const ordersTableBody = document.getElementById('ordersTableBody');
-        if (!ordersTableBody) return; 
+        if (!ordersTableBody) return;
 
         try {
-            const response = await fetch('/cashier/api/orders/all');
+            let apiUrl = '/cashier/api/orders/all';
+
+            // Determine which API endpoint to use based on date filter
+            if (filterType === 'today') {
+                apiUrl = '/cashier/api/orders/today';
+            } else if (filterType === 'custom' && customDate) {
+                apiUrl = `/cashier/api/orders/by-date?date=${customDate}`;
+            }
+
+            const response = await fetch(apiUrl);
             const data = await response.json();
 
             if (data.success && data.data) {
-                this.updateOrdersTable(data.data);
+                // Store all orders for filtering
+                this.allOrders = data.data;
+
+                // Apply status and payment filters
+                let filteredOrders = this.applyOrderFilters(data.data, statusFilter, paymentFilter);
+
+                this.updateOrdersTable(filteredOrders);
+                this.updateOrderCount(filteredOrders.length);
             }
         } catch (error) {
             console.error('Error loading orders:', error);
         }
 
-        
         await this.loadAvailableMenus();
+        this.setupOrderFilterListeners();
+    }
+
+    applyOrderFilters(orders, statusFilter, paymentFilter) {
+        let filtered = orders;
+
+        // Apply status filter
+        if (statusFilter !== 'all') {
+            filtered = filtered.filter(order => order.status === statusFilter);
+        }
+
+        // Apply payment filter
+        if (paymentFilter !== 'all') {
+            if (paymentFilter === 'PAID' || paymentFilter === 'PENDING') {
+                // Filter by payment status
+                filtered = filtered.filter(order => order.paymentStatus === paymentFilter);
+            } else if (paymentFilter === 'CASH' || paymentFilter === 'QR_CODE') {
+                // Filter by payment method
+                filtered = filtered.filter(order => order.paymentMethod === paymentFilter);
+            }
+        }
+
+        return filtered;
+    }
+
+    setupOrderFilterListeners() {
+        const dateFilterType = document.getElementById('dateFilterType');
+        const customDate = document.getElementById('customDate');
+        const statusFilter = document.getElementById('statusFilter');
+        const paymentFilter = document.getElementById('paymentFilter');
+        const applyButton = document.getElementById('applyFilters');
+
+        if (!dateFilterType) return;
+
+        // Show/hide custom date input based on selection
+        dateFilterType.addEventListener('change', () => {
+            if (dateFilterType.value === 'custom') {
+                customDate.style.display = 'block';
+                // Set default to today's date
+                const today = new Date().toISOString().split('T')[0];
+                customDate.value = today;
+            } else {
+                customDate.style.display = 'none';
+            }
+        });
+
+        // Apply all filters button
+        if (applyButton) {
+            applyButton.addEventListener('click', () => {
+                const dateType = dateFilterType.value;
+                const selectedDate = customDate.value;
+                const status = statusFilter ? statusFilter.value : 'all';
+                const payment = paymentFilter ? paymentFilter.value : 'all';
+                this.loadOrdersPage(dateType, selectedDate, status, payment);
+            });
+        }
+
+        // Also apply filter when status or payment filter changes
+        if (statusFilter) {
+            statusFilter.addEventListener('change', () => {
+                const dateType = dateFilterType.value;
+                const selectedDate = customDate.value;
+                const status = statusFilter.value;
+                const payment = paymentFilter ? paymentFilter.value : 'all';
+
+                // If we have loaded orders, just refilter them
+                if (this.allOrders) {
+                    const filtered = this.applyOrderFilters(this.allOrders, status, payment);
+                    this.updateOrdersTable(filtered);
+                    this.updateOrderCount(filtered.length);
+                }
+            });
+        }
+
+        if (paymentFilter) {
+            paymentFilter.addEventListener('change', () => {
+                const dateType = dateFilterType.value;
+                const selectedDate = customDate.value;
+                const status = statusFilter ? statusFilter.value : 'all';
+                const payment = paymentFilter.value;
+
+                // If we have loaded orders, just refilter them
+                if (this.allOrders) {
+                    const filtered = this.applyOrderFilters(this.allOrders, status, payment);
+                    this.updateOrdersTable(filtered);
+                    this.updateOrderCount(filtered.length);
+                }
+            });
+        }
+    }
+
+    updateOrderCount(count) {
+        const badge = document.getElementById('orderCountBadge');
+        if (badge) {
+            badge.textContent = `${count} Pesanan`;
+        }
     }
 
     async loadAvailableMenus() {
@@ -544,106 +692,242 @@ class CashierApp {
         return buttons;
     }
 
-    addOrderItem() {
-        const container = document.getElementById('orderItemsContainer');
-        if (!container) return;
-
-        console.log('Adding order item. Available menus:', this.availableMenus.length);
-
-        const itemId = this.orderItemCounter++;
-
-        const menuOptions = this.availableMenus.map(menu =>
-            `<option value="${menu.id}" data-price="${menu.currentPrice}">
-                ${menu.name} - Rp ${menu.currentPrice?.toLocaleString('id-ID')}
-            </option>`
-        ).join('');
-
-        console.log('Menu options HTML length:', menuOptions.length);
-
-        const itemHTML = `
-            <div class="row mb-2 order-item" id="orderItem-${itemId}">
-                <div class="col-md-6">
-                    <select class="form-select menu-select" data-item-id="${itemId}" required>
-                        <option value="">Pilih Menu</option>
-                        ${menuOptions}
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <input type="number" class="form-control quantity-input"
-                           data-item-id="${itemId}" min="1" value="1" placeholder="Qty" required>
-                </div>
-                <div class="col-md-2">
-                    <input type="text" class="form-control subtotal-display"
-                           id="subtotal-${itemId}" readonly placeholder="Subtotal">
-                </div>
-                <div class="col-md-1">
-                    <button type="button" class="btn btn-danger btn-sm"
-                            onclick="cashierApp.removeOrderItem(${itemId})">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
-        `;
-
-        container.insertAdjacentHTML('beforeend', itemHTML);
-
-        
-        const menuSelect = container.querySelector(`.menu-select[data-item-id="${itemId}"]`);
-        const qtyInput = container.querySelector(`.quantity-input[data-item-id="${itemId}"]`);
-
-        menuSelect.addEventListener('change', () => this.updateItemSubtotal(itemId));
-        qtyInput.addEventListener('input', () => this.updateItemSubtotal(itemId));
-    }
-
-    removeOrderItem(itemId) {
-        const item = document.getElementById(`orderItem-${itemId}`);
-        if (item) {
-            item.remove();
+    async loadCategories() {
+        try {
+            const response = await fetch('/cashier/api/categories');
+            const data = await response.json();
+            if (data.success && data.data) {
+                this.availableCategories = data.data;
+            }
+        } catch (error) {
+            console.error('Error loading categories:', error);
         }
     }
 
-    updateItemSubtotal(itemId) {
-        const menuSelect = document.querySelector(`.menu-select[data-item-id="${itemId}"]`);
-        const qtyInput = document.querySelector(`.quantity-input[data-item-id="${itemId}"]`);
-        const subtotalDisplay = document.getElementById(`subtotal-${itemId}`);
+    populateCategoryFilter() {
+        const categoryFilter = document.getElementById('categoryFilter');
+        if (!categoryFilter) return;
 
-        if (!menuSelect || !qtyInput || !subtotalDisplay) return;
+        // Filter out "SEMUA" category as it's a placeholder, not a real category
+        const options = this.availableCategories
+            .filter(cat => cat.name.toUpperCase() !== 'SEMUA')
+            .map(cat => `<option value="${cat.name}">${cat.name}</option>`)
+            .join('');
 
-        const selectedOption = menuSelect.options[menuSelect.selectedIndex];
-        const price = parseFloat(selectedOption.dataset.price || 0);
-        const quantity = parseInt(qtyInput.value || 0);
-        const subtotal = price * quantity;
+        categoryFilter.innerHTML = '<option value="">Semua Kategori</option>' + options;
+    }
 
-        subtotalDisplay.value = `Rp ${subtotal.toLocaleString('id-ID')}`;
+    populateMenuGrid() {
+        const menuGrid = document.getElementById('menuGrid');
+        if (!menuGrid) return;
+
+        let filteredMenus = this.availableMenus.filter(menu => menu.available);
+
+        // Apply search filter
+        if (this.currentMenuFilter) {
+            const search = this.currentMenuFilter.toLowerCase();
+            filteredMenus = filteredMenus.filter(menu =>
+                menu.name.toLowerCase().includes(search) ||
+                (menu.description && menu.description.toLowerCase().includes(search))
+            );
+        }
+
+        // Apply category filter
+        if (this.currentCategoryFilter) {
+            filteredMenus = filteredMenus.filter(menu =>
+                menu.category && menu.category.name === this.currentCategoryFilter
+            );
+        }
+
+        if (filteredMenus.length === 0) {
+            menuGrid.innerHTML = `
+                <div class="col-12 text-center text-muted py-4">
+                    <i class="fas fa-search fa-2x mb-2"></i>
+                    <p>Tidak ada menu ditemukan</p>
+                </div>
+            `;
+            return;
+        }
+
+        menuGrid.innerHTML = filteredMenus.map(menu => `
+            <div class="col-md-6">
+                <div class="card menu-card-cashier" style="cursor: pointer;" data-menu-id="${menu.id}">
+                    <div class="card-body p-2">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">${menu.name}</h6>
+                                <p class="text-muted small mb-1">${menu.category ? menu.category.name : ''}</p>
+                                <strong class="text-primary" style="font-size: 1.1rem;">Rp ${menu.currentPrice.toLocaleString('id-ID')}</strong>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-primary add-menu-btn" data-menu-id="${menu.id}">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        // Add click listeners
+        menuGrid.querySelectorAll('.add-menu-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const menuId = parseInt(btn.dataset.menuId);
+                this.addMenuToOrder(menuId);
+            });
+        });
+    }
+
+    setupMenuSearch() {
+        const searchInput = document.getElementById('menuSearch');
+        if (!searchInput) return;
+
+        searchInput.addEventListener('input', (e) => {
+            this.currentMenuFilter = e.target.value;
+            this.populateMenuGrid();
+        });
+    }
+
+    setupCategoryFilter() {
+        const categoryFilter = document.getElementById('categoryFilter');
+        if (!categoryFilter) return;
+
+        categoryFilter.addEventListener('change', (e) => {
+            this.currentCategoryFilter = e.target.value;
+            this.populateMenuGrid();
+        });
+    }
+
+    addMenuToOrder(menuId) {
+        const menu = this.availableMenus.find(m => m.id === menuId);
+        if (!menu) return;
+
+        // Check if item already in order
+        const existingItem = this.selectedOrderItems.find(item => item.menuId === menuId);
+        if (existingItem) {
+            existingItem.quantity++;
+        } else {
+            this.selectedOrderItems.push({
+                menuId: menu.id,
+                menuName: menu.name,
+                price: menu.currentPrice,
+                quantity: 1
+            });
+        }
+
+        this.updateSelectedItemsDisplay();
+        this.showToast(`${menu.name} ditambahkan`, 'success');
+    }
+
+    updateSelectedItemsDisplay() {
+        const container = document.getElementById('selectedItemsContainer');
+        const emptyMessage = document.getElementById('emptySelectedItems');
+        const countBadge = document.getElementById('selectedItemsCount');
+        const totalDisplay = document.getElementById('orderTotal');
+
+        if (!container) return;
+
+        if (countBadge) {
+            countBadge.textContent = this.selectedOrderItems.length;
+        }
+
+        if (this.selectedOrderItems.length === 0) {
+            if (emptyMessage) {
+                emptyMessage.style.display = 'block';
+            }
+            container.innerHTML = '';
+            if (totalDisplay) {
+                totalDisplay.textContent = 'Rp 0';
+            }
+            return;
+        }
+
+        if (emptyMessage) {
+            emptyMessage.style.display = 'none';
+        }
+
+        let total = 0;
+        const itemsHTML = this.selectedOrderItems.map((item, index) => {
+            const subtotal = item.price * item.quantity;
+            total += subtotal;
+
+            return `
+                <div class="card mb-2">
+                    <div class="card-body p-2">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">${item.menuName}</h6>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" onclick="cashierApp.decreaseQuantity(${index})">
+                                            <i class="fas fa-minus"></i>
+                                        </button>
+                                        <input type="number" class="form-control" style="width: 50px; text-align: center;"
+                                               value="${item.quantity}" min="1" readonly>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="cashierApp.increaseQuantity(${index})">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </div>
+                                    <span class="text-muted">×</span>
+                                    <strong style="font-size: 1rem;">Rp ${item.price.toLocaleString('id-ID')}</strong>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <button type="button" class="btn btn-sm btn-danger mb-1" onclick="cashierApp.removeFromOrder(${index})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                <div><strong class="text-primary">Rp ${subtotal.toLocaleString('id-ID')}</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        container.innerHTML = itemsHTML;
+        if (totalDisplay) {
+            totalDisplay.textContent = `Rp ${total.toLocaleString('id-ID')}`;
+        }
+    }
+
+    increaseQuantity(index) {
+        if (this.selectedOrderItems[index]) {
+            this.selectedOrderItems[index].quantity++;
+            this.updateSelectedItemsDisplay();
+        }
+    }
+
+    decreaseQuantity(index) {
+        if (this.selectedOrderItems[index] && this.selectedOrderItems[index].quantity > 1) {
+            this.selectedOrderItems[index].quantity--;
+            this.updateSelectedItemsDisplay();
+        }
+    }
+
+    removeFromOrder(index) {
+        this.selectedOrderItems.splice(index, 1);
+        this.updateSelectedItemsDisplay();
+        this.showToast('Item dihapus', 'info');
     }
 
     async createNewOrder() {
         const customerName = document.getElementById('customerName').value.trim();
-        const orderItems = [];
 
-        
-        document.querySelectorAll('.order-item').forEach(item => {
-            const menuSelect = item.querySelector('.menu-select');
-            const qtyInput = item.querySelector('.quantity-input');
-
-            if (menuSelect && qtyInput && menuSelect.value) {
-                orderItems.push({
-                    menuId: parseInt(menuSelect.value),
-                    quantity: parseInt(qtyInput.value)
-                });
-            }
-        });
-
-        
+        // Validate
         if (!customerName) {
             this.showToast('Nama customer harus diisi', 'error');
             return;
         }
 
-        if (orderItems.length === 0) {
+        if (this.selectedOrderItems.length === 0) {
             this.showToast('Tambahkan minimal 1 item menu', 'error');
             return;
         }
+
+        const orderItems = this.selectedOrderItems.map(item => ({
+            menuId: item.menuId,
+            quantity: item.quantity
+        }));
 
         try {
             const requestBody = {
@@ -669,16 +953,17 @@ class CashierApp {
             if (data.success) {
                 this.showToast('Pesanan berhasil dibuat!', 'success');
 
-                
+                // Close modal
                 const modal = bootstrap.Modal.getInstance(document.getElementById('newOrderModal'));
                 if (modal) modal.hide();
 
-                
+                // Reset form
                 document.getElementById('newOrderForm').reset();
-                document.getElementById('orderItemsContainer').innerHTML = '';
-                this.orderItemCounter = 0;
+                this.selectedOrderItems = [];
+                this.currentMenuFilter = '';
+                this.currentCategoryFilter = '';
 
-                
+                // Refresh orders
                 this.loadOrdersPage();
             } else {
                 this.showToast('Gagal membuat pesanan: ' + data.message, 'error');
@@ -690,8 +975,123 @@ class CashierApp {
     }
 
     viewOrderDetails(orderNumber) {
-        // TODO: Implement details view
-        this.showToast(`Viewing order ${orderNumber}`, 'info');
+        // Find the order in the cached data
+        const order = this.allOrders ? this.allOrders.find(o => o.orderNumber === orderNumber) : null;
+
+        if (!order) {
+            this.showToast('Pesanan tidak ditemukan', 'error');
+            return;
+        }
+
+        // Generate order details HTML
+        const orderDate = new Date(order.createdAt);
+        const formattedDate = orderDate.toLocaleDateString('id-ID', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        const statusBadge = this.getStatusBadge(order.status);
+        const paymentStatusBadge = this.getPaymentStatusBadge(order.paymentStatus);
+        const paymentMethodBadge = order.paymentMethod ? this.getPaymentMethodBadge(order.paymentMethod) : '<span class="badge bg-secondary">-</span>';
+
+        let itemsHtml = '';
+        if (order.items && order.items.length > 0) {
+            itemsHtml = order.items.map(item => {
+                const itemTotal = item.quantity * item.price;
+                const menuName = item.menu ? item.menu.name : 'Item';
+                return `
+                    <tr>
+                        <td>${menuName}</td>
+                        <td class="text-center">${item.quantity}</td>
+                        <td class="text-end">Rp ${item.price.toLocaleString('id-ID')}</td>
+                        <td class="text-end"><strong>Rp ${itemTotal.toLocaleString('id-ID')}</strong></td>
+                    </tr>
+                `;
+            }).join('');
+        } else {
+            itemsHtml = '<tr><td colspan="4" class="text-center text-muted">Tidak ada item</td></tr>';
+        }
+
+        const detailsHtml = `
+            <div class="order-details">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-2">Informasi Pesanan</h6>
+                        <table class="table table-sm table-borderless">
+                            <tr>
+                                <td width="140"><strong>Nomor Pesanan:</strong></td>
+                                <td>${order.orderNumber}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Nama Customer:</strong></td>
+                                <td>${order.customerName || '-'}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tipe Pesanan:</strong></td>
+                                <td><span class="badge bg-info">${order.orderType === 'CUSTOMER_SELF' ? 'CUSTOMER SELF' : 'CASHIER ASSISTED'}</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tanggal:</strong></td>
+                                <td>${formattedDate}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-2">Status & Pembayaran</h6>
+                        <table class="table table-sm table-borderless">
+                            <tr>
+                                <td width="140"><strong>Status Pesanan:</strong></td>
+                                <td>${statusBadge}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status Pembayaran:</strong></td>
+                                <td>${paymentStatusBadge}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Metode Pembayaran:</strong></td>
+                                <td>${paymentMethodBadge}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <hr>
+
+                <h6 class="text-muted mb-3">Detail Item Pesanan</h6>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Item</th>
+                                <th class="text-center">Qty</th>
+                                <th class="text-end">Harga Satuan</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemsHtml}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-light">
+                                <td colspan="3" class="text-end"><strong>TOTAL:</strong></td>
+                                <td class="text-end"><strong class="text-primary">Rp ${order.total.toLocaleString('id-ID')}</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        `;
+
+        // Populate modal and show it
+        const modalContent = document.getElementById('orderDetailsContent');
+        if (modalContent) {
+            modalContent.innerHTML = detailsHtml;
+            const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+            modal.show();
+        }
     }
 
     async showPaymentModal(orderNumber) {
@@ -862,16 +1262,19 @@ class CashierApp {
                 const orders = data.data;
                 console.log('Total orders in database:', orders.length);
 
-                const startDate = new Date(document.getElementById('startDate').value);
-                const endDate = new Date(document.getElementById('endDate').value);
-                endDate.setHours(23, 59, 59, 999); // End of day
+                // Get date values from inputs
+                const startDateStr = document.getElementById('startDate').value;
+                const endDateStr = document.getElementById('endDate').value;
 
-                console.log('Date range:', startDate, 'to', endDate);
+                console.log('Date range (strings):', startDateStr, 'to', endDateStr);
 
-                // Filter orders by date range
+                // Filter orders by date range - compare only dates, not times
                 const filteredOrders = orders.filter(order => {
-                    const orderDate = new Date(order.createdAt);
-                    return orderDate >= startDate && orderDate <= endDate;
+                    // Extract date portion from order's createdAt (format: "2025-11-19T10:30:45")
+                    const orderDateStr = order.createdAt.split('T')[0]; // Get "2025-11-19"
+
+                    // Compare as strings (YYYY-MM-DD format compares correctly)
+                    return orderDateStr >= startDateStr && orderDateStr <= endDateStr;
                 });
 
                 console.log('Filtered orders:', filteredOrders.length);
@@ -879,33 +1282,52 @@ class CashierApp {
                 // Calculate totals
                 const totalOrders = filteredOrders.length;
                 const completedOrders = filteredOrders.filter(o => o.status === 'COMPLETED');
+                const cancelledOrders = filteredOrders.filter(o => o.status === 'CANCELLED');
                 const paidOrders = filteredOrders.filter(o => o.paymentStatus === 'PAID');
                 const totalRevenue = paidOrders.reduce((sum, order) => sum + (order.total || 0), 0);
 
+                // Payment method breakdown
+                const qrPayments = paidOrders.filter(o => o.paymentMethod === 'QR_CODE').length;
+                const cashPayments = paidOrders.filter(o => o.paymentMethod === 'CASH').length;
+
                 console.log('Completed orders:', completedOrders.length);
                 console.log('Paid orders:', paidOrders.length);
+                console.log('Cancelled orders:', cancelledOrders.length);
+                console.log('QR payments:', qrPayments);
+                console.log('Cash payments:', cashPayments);
                 console.log('Total revenue:', totalRevenue);
 
-                // Update UI
+                // Update UI - Main Stats
                 const revenueElement = document.getElementById('totalRevenue');
                 const ordersElement = document.getElementById('totalOrders');
 
-                console.log('Revenue element:', revenueElement);
-                console.log('Orders element:', ordersElement);
-
                 if (revenueElement) {
                     revenueElement.textContent = `Rp ${totalRevenue.toLocaleString('id-ID')}`;
-                    console.log('Updated revenue to:', revenueElement.textContent);
-                } else {
-                    console.error('Revenue element not found!');
                 }
 
                 if (ordersElement) {
                     ordersElement.textContent = totalOrders;
-                    console.log('Updated orders to:', ordersElement.textContent);
-                } else {
-                    console.error('Orders element not found!');
                 }
+
+                // Update UI - Payment Method Breakdown
+                const qrCountElement = document.getElementById('qrPaymentCount');
+                const cashCountElement = document.getElementById('cashPaymentCount');
+                const cancelledElement = document.getElementById('cancelledOrders');
+
+                if (qrCountElement) {
+                    qrCountElement.textContent = qrPayments;
+                }
+
+                if (cashCountElement) {
+                    cashCountElement.textContent = cashPayments;
+                }
+
+                if (cancelledElement) {
+                    cancelledElement.textContent = cancelledOrders.length;
+                }
+
+                // Load invoices for the same date range
+                await this.loadInvoices(startDateStr, endDateStr);
 
                 this.showToast('Laporan berhasil di-generate', 'success');
             } else {
@@ -916,8 +1338,812 @@ class CashierApp {
         }
     }
 
-    exportReport() {
-        this.showToast('Export PDF sedang dalam pengembangan', 'info');
+    async loadInvoices(startDate, endDate) {
+        try {
+            console.log('=== LOADING INVOICES ===');
+            console.log('Date range:', startDate, 'to', endDate);
+
+            const url = `/cashier/api/invoices/by-date?startDate=${startDate}&endDate=${endDate}`;
+            console.log('Fetching from URL:', url);
+
+            const response = await fetch(url);
+            console.log('Response status:', response.status);
+
+            if (!response.ok) {
+                console.error('HTTP error:', response.status, response.statusText);
+                this.updateInvoicesTable([]);
+                this.showToast('Gagal memuat invoice: ' + response.statusText, 'error');
+                return;
+            }
+
+            const data = await response.json();
+            console.log('Invoices API response:', data);
+            console.log('Success:', data.success);
+            console.log('Data array:', data.data);
+            console.log('Invoice count:', data.data ? data.data.length : 0);
+
+            if (data.success && data.data) {
+                console.log('Updating table with', data.data.length, 'invoices');
+                // Store all invoices for filtering
+                this.allInvoices = data.data;
+                this.updateInvoicesTable(data.data);
+                this.setupInvoiceFilter();
+            } else {
+                console.error('API returned success=false or no data:', data);
+                this.allInvoices = [];
+                this.updateInvoicesTable([]);
+            }
+        } catch (error) {
+            console.error('Error loading invoices:', error);
+            console.error('Error stack:', error.stack);
+            this.allInvoices = [];
+            this.updateInvoicesTable([]);
+            this.showToast('Terjadi kesalahan saat memuat invoice', 'error');
+        }
+    }
+
+    setupInvoiceFilter() {
+        const filterButtons = document.querySelectorAll('input[name="invoiceFilter"]');
+        filterButtons.forEach(button => {
+            button.addEventListener('change', (e) => {
+                const filterValue = e.target.value;
+                this.filterInvoices(filterValue);
+            });
+        });
+    }
+
+    filterInvoices(filterType) {
+        if (!this.allInvoices) {
+            return;
+        }
+
+        let filteredInvoices = this.allInvoices;
+
+        if (filterType === 'qr') {
+            filteredInvoices = this.allInvoices.filter(inv => inv.paymentMethod === 'QR_CODE');
+        } else if (filterType === 'cash') {
+            filteredInvoices = this.allInvoices.filter(inv => inv.paymentMethod === 'CASH');
+        }
+
+        this.updateInvoicesTable(filteredInvoices);
+    }
+
+    updateInvoicesTable(invoices) {
+        const tableBody = document.getElementById('invoicesTableBody');
+        if (!tableBody) return;
+
+        if (invoices.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                        <p class="mb-0">Tidak ada invoice untuk periode ini</p>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tableBody.innerHTML = invoices.map(invoice => {
+            const createdDate = new Date(invoice.createdAt);
+            const formattedDate = createdDate.toLocaleDateString('id-ID', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            const paymentBadge = this.getPaymentMethodBadge(invoice.paymentMethod);
+
+            return `
+                <tr>
+                    <td><strong>${invoice.invoiceNumber}</strong></td>
+                    <td>${invoice.order ? invoice.order.orderNumber : '-'}</td>
+                    <td>${invoice.order ? invoice.order.customerName : '-'}</td>
+                    <td>
+                        <strong>Rp ${invoice.finalAmount.toLocaleString('id-ID')}</strong>
+                        <br>
+                        <small class="text-muted">${paymentBadge}</small>
+                    </td>
+                    <td>${formattedDate}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="cashierApp.viewInvoice(${invoice.id})">
+                            <i class="fas fa-eye"></i> Lihat
+                        </button>
+                        <button class="btn btn-sm btn-success" onclick="cashierApp.downloadInvoicePdf(${invoice.id})">
+                            <i class="fas fa-download"></i> PDF
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    getPaymentMethodBadge(method) {
+        switch(method) {
+            case 'CASH':
+                return '<span class="badge bg-success">Tunai</span>';
+            case 'QR_CODE':
+                return '<span class="badge bg-info">QR Code</span>';
+            default:
+                return '<span class="badge bg-secondary">' + method + '</span>';
+        }
+    }
+
+    getStatusBadge(status) {
+        const color = this.getStatusColor(status);
+        return `<span class="badge bg-${color}">${status}</span>`;
+    }
+
+    getPaymentStatusBadge(status) {
+        const color = this.getPaymentStatusColor(status);
+        return `<span class="badge bg-${color}">${status}</span>`;
+    }
+
+    viewInvoice(invoiceId) {
+        // Find the invoice in the cached data
+        const invoice = this.allInvoices ? this.allInvoices.find(inv => inv.id === invoiceId) : null;
+
+        if (!invoice) {
+            this.showToast('Invoice tidak ditemukan', 'error');
+            return;
+        }
+
+        // Generate invoice details HTML
+        const invoiceDate = new Date(invoice.createdAt);
+        const formattedDate = invoiceDate.toLocaleDateString('id-ID', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        const paymentMethodBadge = this.getPaymentMethodBadge(invoice.paymentMethod);
+
+        let itemsHtml = '';
+        if (invoice.order && invoice.order.items && invoice.order.items.length > 0) {
+            itemsHtml = invoice.order.items.map(item => {
+                const itemTotal = item.quantity * item.price;
+                const menuName = item.menu ? item.menu.name : 'Item';
+                return `
+                    <tr>
+                        <td>${menuName}</td>
+                        <td class="text-center">${item.quantity}</td>
+                        <td class="text-end">Rp ${item.price.toLocaleString('id-ID')}</td>
+                        <td class="text-end"><strong>Rp ${itemTotal.toLocaleString('id-ID')}</strong></td>
+                    </tr>
+                `;
+            }).join('');
+        } else {
+            itemsHtml = '<tr><td colspan="4" class="text-center text-muted">Tidak ada item</td></tr>';
+        }
+
+        const detailsHtml = `
+            <div class="invoice-details">
+                <!-- Invoice Header -->
+                <div class="text-center mb-4">
+                    <h4 class="text-primary mb-1">ChopChop Restaurant</h4>
+                    <p class="text-muted mb-0">Jl. Kuliner No. 123, Jakarta</p>
+                    <p class="text-muted mb-0">Telp: (021) 1234-5678</p>
+                </div>
+
+                <hr>
+
+                <!-- Invoice Info -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-2">Informasi Invoice</h6>
+                        <table class="table table-sm table-borderless">
+                            <tr>
+                                <td width="140"><strong>No. Invoice:</strong></td>
+                                <td>${invoice.invoiceNumber}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tanggal:</strong></td>
+                                <td>${formattedDate}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Kasir:</strong></td>
+                                <td>${invoice.cashier ? invoice.cashier.displayName : '-'}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-2">Informasi Pesanan</h6>
+                        <table class="table table-sm table-borderless">
+                            <tr>
+                                <td width="140"><strong>No. Pesanan:</strong></td>
+                                <td>${invoice.order ? invoice.order.orderNumber : '-'}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Customer:</strong></td>
+                                <td>${invoice.order ? invoice.order.customerName : '-'}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Pembayaran:</strong></td>
+                                <td>${paymentMethodBadge}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <hr>
+
+                <!-- Items Table -->
+                <h6 class="text-muted mb-3">Detail Item</h6>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Item</th>
+                                <th class="text-center">Qty</th>
+                                <th class="text-end">Harga Satuan</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemsHtml}
+                        </tbody>
+                    </table>
+                </div>
+
+                <hr>
+
+                <!-- Totals -->
+                <div class="row justify-content-end">
+                    <div class="col-md-6">
+                        <table class="table table-sm table-borderless">
+                            <tr>
+                                <td class="text-end"><strong>Subtotal:</strong></td>
+                                <td class="text-end" width="150">Rp ${invoice.totalAmount.toLocaleString('id-ID')}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-end"><strong>Pajak (10%):</strong></td>
+                                <td class="text-end">Rp ${invoice.taxAmount.toLocaleString('id-ID')}</td>
+                            </tr>
+                            <tr class="border-top">
+                                <td class="text-end"><h5 class="mb-0"><strong>TOTAL:</strong></h5></td>
+                                <td class="text-end"><h5 class="mb-0 text-primary"><strong>Rp ${invoice.finalAmount.toLocaleString('id-ID')}</strong></h5></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4 text-muted">
+                    <p class="mb-0"><small>Terima kasih atas kunjungan Anda!</small></p>
+                </div>
+            </div>
+        `;
+
+        // Populate modal and show it
+        const modalContent = document.getElementById('invoiceDetailsContent');
+        if (modalContent) {
+            modalContent.innerHTML = detailsHtml;
+            const modal = new bootstrap.Modal(document.getElementById('invoiceDetailsModal'));
+            modal.show();
+
+            // Setup print button
+            const printBtn = document.getElementById('printInvoiceBtn');
+            if (printBtn) {
+                printBtn.onclick = () => {
+                    this.downloadInvoicePdf(invoiceId);
+                };
+            }
+        }
+    }
+
+    async downloadInvoicePdf(invoiceId) {
+        try {
+            // Fetch invoice data
+            const invoice = this.allInvoices ? this.allInvoices.find(inv => inv.id === invoiceId) : null;
+
+            if (!invoice) {
+                this.showToast('Invoice tidak ditemukan', 'error');
+                return;
+            }
+
+            // Generate invoice HTML for printing
+            this.generateInvoicePdf(invoice);
+
+        } catch (error) {
+            console.error('Error downloading invoice PDF:', error);
+            this.showToast('Terjadi kesalahan saat mengunduh invoice', 'error');
+        }
+    }
+
+    generateInvoicePdf(invoice) {
+        const printWindow = window.open('', '_blank');
+
+        const createdDate = new Date(invoice.createdAt);
+        const formattedDate = createdDate.toLocaleString('id-ID', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        const paymentMethod = invoice.paymentMethod === 'CASH' ? 'Tunai' : 'QR Code';
+
+        const orderItems = invoice.order && invoice.order.items ? invoice.order.items.map((item, index) => `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${item.menu ? item.menu.name : 'N/A'}</td>
+                <td style="text-align: center;">${item.quantity}</td>
+                <td style="text-align: right;">Rp ${item.price.toLocaleString('id-ID')}</td>
+                <td style="text-align: right;">Rp ${item.subtotal.toLocaleString('id-ID')}</td>
+            </tr>
+        `).join('') : '<tr><td colspan="5" style="text-align: center;">No items</td></tr>';
+
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Invoice - ${invoice.invoiceNumber}</title>
+                <style>
+                    * {
+                        margin: 0;
+                        padding: 0;
+                        box-sizing: border-box;
+                    }
+                    body {
+                        font-family: Arial, sans-serif;
+                        padding: 40px;
+                        background: white;
+                    }
+                    .invoice-header {
+                        text-align: center;
+                        margin-bottom: 30px;
+                        border-bottom: 3px solid #A63939;
+                        padding-bottom: 20px;
+                    }
+                    .invoice-header h1 {
+                        color: #A63939;
+                        font-size: 28px;
+                        margin-bottom: 5px;
+                    }
+                    .invoice-header h2 {
+                        color: #666;
+                        font-size: 18px;
+                        font-weight: normal;
+                    }
+                    .invoice-number {
+                        text-align: center;
+                        font-size: 20px;
+                        font-weight: bold;
+                        color: #A63939;
+                        margin-bottom: 20px;
+                    }
+                    .invoice-info {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 20px;
+                        margin-bottom: 30px;
+                    }
+                    .info-section {
+                        background: #f8f9fa;
+                        padding: 15px;
+                        border-radius: 8px;
+                    }
+                    .info-section h3 {
+                        color: #A63939;
+                        font-size: 14px;
+                        margin-bottom: 10px;
+                        text-transform: uppercase;
+                    }
+                    .info-section p {
+                        margin: 5px 0;
+                        font-size: 13px;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-top: 20px;
+                    }
+                    th {
+                        background: #A63939;
+                        color: white;
+                        padding: 12px;
+                        text-align: left;
+                        font-weight: bold;
+                        font-size: 12px;
+                    }
+                    td {
+                        padding: 10px 12px;
+                        border-bottom: 1px solid #ddd;
+                        font-size: 12px;
+                    }
+                    .total-section {
+                        margin-top: 30px;
+                        text-align: right;
+                    }
+                    .total-row {
+                        display: flex;
+                        justify-content: flex-end;
+                        margin: 10px 0;
+                        font-size: 14px;
+                    }
+                    .total-row.grand {
+                        font-size: 18px;
+                        font-weight: bold;
+                        color: #A63939;
+                        border-top: 2px solid #A63939;
+                        padding-top: 10px;
+                        margin-top: 15px;
+                    }
+                    .total-label {
+                        width: 150px;
+                        text-align: right;
+                        padding-right: 20px;
+                    }
+                    .total-value {
+                        width: 200px;
+                        text-align: right;
+                    }
+                    .footer {
+                        margin-top: 40px;
+                        padding-top: 20px;
+                        border-top: 2px solid #ddd;
+                        text-align: center;
+                        color: #666;
+                        font-size: 12px;
+                    }
+                    @media print {
+                        body {
+                            padding: 20px;
+                        }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="invoice-header">
+                    <h1>ChopChop Restaurant</h1>
+                    <h2>Invoice</h2>
+                </div>
+
+                <div class="invoice-number">
+                    ${invoice.invoiceNumber}
+                </div>
+
+                <div class="invoice-info">
+                    <div class="info-section">
+                        <h3>Informasi Pesanan</h3>
+                        <p><strong>No. Pesanan:</strong> ${invoice.order ? invoice.order.orderNumber : 'N/A'}</p>
+                        <p><strong>Customer:</strong> ${invoice.order ? invoice.order.customerName : 'N/A'}</p>
+                        <p><strong>Tanggal:</strong> ${formattedDate}</p>
+                    </div>
+                    <div class="info-section">
+                        <h3>Pembayaran</h3>
+                        <p><strong>Metode:</strong> ${paymentMethod}</p>
+                        <p><strong>Status:</strong> LUNAS</p>
+                        <p><strong>Kasir:</strong> ${invoice.cashier ? invoice.cashier.displayName : 'N/A'}</p>
+                    </div>
+                </div>
+
+                <h3 style="color: #A63939; margin-bottom: 10px;">Detail Pesanan</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;">No</th>
+                            <th>Item</th>
+                            <th style="width: 80px; text-align: center;">Qty</th>
+                            <th style="width: 120px; text-align: right;">Harga</th>
+                            <th style="width: 120px; text-align: right;">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${orderItems}
+                    </tbody>
+                </table>
+
+                <div class="total-section">
+                    <div class="total-row">
+                        <div class="total-label">Subtotal:</div>
+                        <div class="total-value">Rp ${invoice.totalAmount.toLocaleString('id-ID')}</div>
+                    </div>
+                    <div class="total-row">
+                        <div class="total-label">Pajak:</div>
+                        <div class="total-value">Rp ${invoice.taxAmount.toLocaleString('id-ID')}</div>
+                    </div>
+                    <div class="total-row grand">
+                        <div class="total-label">Total:</div>
+                        <div class="total-value">Rp ${invoice.finalAmount.toLocaleString('id-ID')}</div>
+                    </div>
+                </div>
+
+                <div class="footer">
+                    <p>Terima kasih atas kunjungan Anda!</p>
+                    <p>&copy; ${new Date().getFullYear()} ChopChop Restaurant. All rights reserved.</p>
+                </div>
+
+                <script>
+                    window.onload = function() {
+                        window.print();
+                    }
+                </script>
+            </body>
+            </html>
+        `;
+
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+    }
+
+    async generateMissingInvoices() {
+        if (!confirm('Generate invoices untuk semua pesanan yang sudah dibayar tapi belum memiliki invoice?\n\nIni akan membuat invoice untuk pesanan lama yang belum memiliki invoice.')) {
+            return;
+        }
+
+        try {
+            this.showToast('Menghasilkan invoice yang hilang...', 'info');
+
+            const response = await fetch('/cashier/api/invoices/generate-missing', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    [this.csrfHeader]: this.csrfToken
+                }
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                const data = result.data;
+                this.showToast(
+                    `Berhasil! ${data.invoicesCreated} invoice baru dibuat, ${data.invoicesSkipped} sudah ada. Total pesanan terbayar: ${data.totalPaidOrders}`,
+                    'success'
+                );
+
+                // Reload the report to show new invoices
+                this.generateReport();
+            } else {
+                this.showToast('Gagal generate invoice: ' + result.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error generating missing invoices:', error);
+            this.showToast('Terjadi kesalahan saat generate invoice', 'error');
+        }
+    }
+
+    async exportReport() {
+        try {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            if (!startDate || !endDate) {
+                this.showToast('Pilih tanggal mulai dan akhir terlebih dahulu', 'error');
+                return;
+            }
+
+            this.showToast('Menghasilkan PDF laporan...', 'info');
+
+            // Get current report data
+            const totalRevenue = document.getElementById('totalRevenue')?.textContent || 'Rp 0';
+            const totalOrders = document.getElementById('totalOrders')?.textContent || '0';
+
+            // Fetch invoices for the date range
+            const response = await fetch(`/cashier/api/invoices/by-date?startDate=${startDate}&endDate=${endDate}`);
+            const data = await response.json();
+
+            if (!data.success) {
+                this.showToast('Gagal mengambil data invoice', 'error');
+                return;
+            }
+
+            const invoices = data.data || [];
+
+            // Generate PDF content
+            this.generateReportPdf(startDate, endDate, totalRevenue, totalOrders, invoices);
+
+        } catch (error) {
+            console.error('Error exporting report:', error);
+            this.showToast('Gagal export laporan', 'error');
+        }
+    }
+
+    generateReportPdf(startDate, endDate, totalRevenue, totalOrders, invoices) {
+        // Create a printable HTML version
+        const printWindow = window.open('', '_blank');
+
+        const invoiceRows = invoices.map((invoice, index) => {
+            const createdDate = new Date(invoice.createdAt);
+            const formattedDate = createdDate.toLocaleDateString('id-ID', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            const paymentMethod = invoice.paymentMethod === 'CASH' ? 'Tunai' : 'QR Code';
+
+            return `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${invoice.invoiceNumber}</td>
+                    <td>${invoice.order ? invoice.order.orderNumber : '-'}</td>
+                    <td>${invoice.order ? invoice.order.customerName : '-'}</td>
+                    <td>${paymentMethod}</td>
+                    <td style="text-align: right;">Rp ${invoice.finalAmount.toLocaleString('id-ID')}</td>
+                    <td>${formattedDate}</td>
+                </tr>
+            `;
+        }).join('');
+
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Laporan Penjualan - ChopChop Restaurant</title>
+                <style>
+                    * {
+                        margin: 0;
+                        padding: 0;
+                        box-sizing: border-box;
+                    }
+                    body {
+                        font-family: Arial, sans-serif;
+                        padding: 40px;
+                        background: white;
+                    }
+                    .header {
+                        text-align: center;
+                        margin-bottom: 30px;
+                        border-bottom: 3px solid #A63939;
+                        padding-bottom: 20px;
+                    }
+                    .header h1 {
+                        color: #A63939;
+                        font-size: 28px;
+                        margin-bottom: 5px;
+                    }
+                    .header h2 {
+                        color: #666;
+                        font-size: 18px;
+                        font-weight: normal;
+                    }
+                    .period {
+                        text-align: center;
+                        margin-bottom: 30px;
+                        color: #333;
+                        font-size: 14px;
+                    }
+                    .summary {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 20px;
+                        margin-bottom: 40px;
+                    }
+                    .summary-card {
+                        background: #f8f9fa;
+                        border: 2px solid #A63939;
+                        border-radius: 8px;
+                        padding: 20px;
+                        text-align: center;
+                    }
+                    .summary-card h3 {
+                        color: #666;
+                        font-size: 14px;
+                        margin-bottom: 10px;
+                        text-transform: uppercase;
+                    }
+                    .summary-card .value {
+                        color: #A63939;
+                        font-size: 24px;
+                        font-weight: bold;
+                    }
+                    .invoice-section h3 {
+                        color: #A63939;
+                        margin-bottom: 15px;
+                        font-size: 18px;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-top: 10px;
+                    }
+                    th {
+                        background: #A63939;
+                        color: white;
+                        padding: 12px;
+                        text-align: left;
+                        font-weight: bold;
+                        font-size: 12px;
+                    }
+                    td {
+                        padding: 10px 12px;
+                        border-bottom: 1px solid #ddd;
+                        font-size: 11px;
+                    }
+                    tr:hover {
+                        background: #f8f9fa;
+                    }
+                    .footer {
+                        margin-top: 40px;
+                        padding-top: 20px;
+                        border-top: 2px solid #ddd;
+                        text-align: center;
+                        color: #666;
+                        font-size: 12px;
+                    }
+                    .print-date {
+                        text-align: right;
+                        color: #666;
+                        font-size: 11px;
+                        margin-top: 20px;
+                    }
+                    @media print {
+                        body {
+                            padding: 20px;
+                        }
+                        .no-print {
+                            display: none;
+                        }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>ChopChop Restaurant</h1>
+                    <h2>Laporan Penjualan</h2>
+                </div>
+
+                <div class="period">
+                    <strong>Periode:</strong> ${startDate} sampai ${endDate}
+                </div>
+
+                <div class="summary">
+                    <div class="summary-card">
+                        <h3>Total Pendapatan</h3>
+                        <div class="value">${totalRevenue}</div>
+                    </div>
+                    <div class="summary-card">
+                        <h3>Total Pesanan</h3>
+                        <div class="value">${totalOrders}</div>
+                    </div>
+                </div>
+
+                <div class="invoice-section">
+                    <h3>Daftar Invoice (${invoices.length} Invoice)</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">No</th>
+                                <th>No. Invoice</th>
+                                <th>No. Pesanan</th>
+                                <th>Customer</th>
+                                <th>Pembayaran</th>
+                                <th style="text-align: right;">Total</th>
+                                <th>Tanggal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${invoiceRows.length > 0 ? invoiceRows : '<tr><td colspan="7" style="text-align: center; padding: 20px;">Tidak ada invoice untuk periode ini</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="print-date">
+                    Dicetak pada: ${new Date().toLocaleString('id-ID')}
+                </div>
+
+                <div class="footer">
+                    <p>&copy; ${new Date().getFullYear()} ChopChop Restaurant. All rights reserved.</p>
+                </div>
+
+                <script>
+                    window.onload = function() {
+                        window.print();
+                    }
+                </script>
+            </body>
+            </html>
+        `;
+
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
     }
 
     showToast(message, type = 'info') {
@@ -1074,6 +2300,10 @@ class CashierApp {
                                     <textarea class="form-control" id="editMenuDescription" rows="3"></textarea>
                                 </div>
                                 <div class="mb-3">
+                                    <label class="form-label">URL Gambar</label>
+                                    <input type="text" class="form-control" id="editMenuImageUrl" placeholder="/images/menu/...">
+                                </div>
+                                <div class="mb-3">
                                     <label class="form-label">Harga Normal</label>
                                     <input type="number" class="form-control" id="editMenuPrice" required>
                                 </div>
@@ -1135,6 +2365,7 @@ class CashierApp {
         document.getElementById('editMenuName').value = menu.name;
         document.getElementById('editMenuCategoryId').value = menu.category ? menu.category.id : '';
         document.getElementById('editMenuDescription').value = menu.description || '';
+        document.getElementById('editMenuImageUrl').value = menu.imageUrl || '';
         document.getElementById('editMenuPrice').value = menu.price;
         document.getElementById('editMenuIsPromo').checked = menu.isPromo || false;
         document.getElementById('editMenuPromoPrice').value = menu.promoPrice || '';
@@ -1160,6 +2391,7 @@ class CashierApp {
         const menuData = {
             name: document.getElementById('editMenuName').value,
             description: document.getElementById('editMenuDescription').value,
+            imageUrl: document.getElementById('editMenuImageUrl').value || null,
             categoryId: parseInt(categoryId),
             price: parseFloat(document.getElementById('editMenuPrice').value),
             isPromo: document.getElementById('editMenuIsPromo').checked,
@@ -1198,6 +2430,180 @@ class CashierApp {
             console.error('Error updating menu:', error);
             this.showToast('Terjadi kesalahan saat update menu', 'error');
         }
+    }
+
+    async createNewMenu() {
+        // Validate form
+        const name = document.getElementById('addMenuName').value.trim();
+        const categoryId = document.getElementById('addMenuCategory').value;
+        const price = parseFloat(document.getElementById('addMenuPrice').value);
+
+        if (!name || !categoryId || !price || price <= 0) {
+            this.showToast('Mohon isi semua field yang wajib diisi', 'error');
+            return;
+        }
+
+        const menuData = {
+            name: name,
+            description: document.getElementById('addMenuDescription').value.trim() || null,
+            price: price,
+            categoryId: parseInt(categoryId),
+            imageUrl: document.getElementById('addMenuImageUrl').value.trim() || null,
+            available: document.getElementById('addMenuAvailable').checked,
+            isPromo: document.getElementById('addMenuIsPromo').checked,
+            promoPrice: document.getElementById('addMenuIsPromo').checked ?
+                parseFloat(document.getElementById('addMenuPromoPrice').value) || null : null
+        };
+
+        try {
+            const response = await fetch('/cashier/api/menus', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...this.getCsrfHeaders()
+                },
+                body: JSON.stringify(menuData)
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                this.showToast('Menu berhasil ditambahkan!', 'success');
+
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addMenuModal'));
+                modal.hide();
+
+                // Reset form
+                document.getElementById('addMenuForm').reset();
+
+                // Reload page to show new menu
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                this.showToast('Gagal menambah menu: ' + data.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error creating menu:', error);
+            this.showToast('Terjadi kesalahan saat menambah menu', 'error');
+        }
+    }
+
+    async deleteMenu(menuId, menuName) {
+        if (!confirm(`Apakah Anda yakin ingin menghapus menu "${menuName}"?\n\nPeringatan: Tindakan ini akan tercatat dalam audit log dan tidak dapat dibatalkan.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/cashier/api/menus/${menuId}`, {
+                method: 'DELETE',
+                headers: {
+                    ...this.getCsrfHeaders()
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                this.showToast('Menu berhasil dihapus', 'success');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                this.showToast('Gagal menghapus menu: ' + data.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting menu:', error);
+            this.showToast('Terjadi kesalahan saat menghapus menu', 'error');
+        }
+    }
+
+    setupMenuFilters() {
+        const categoryFilter = document.getElementById('categoryFilterMenu');
+        const statusFilter = document.getElementById('statusFilterMenu');
+        const promoFilter = document.getElementById('promoFilterMenu');
+        const resetBtn = document.getElementById('resetFiltersBtn');
+
+        if (!categoryFilter) return; // Not on settings page
+
+        const applyFilters = () => {
+            const categoryValue = categoryFilter.value.toLowerCase();
+            const statusValue = statusFilter.value;
+            const promoValue = promoFilter.value;
+
+            const rows = document.querySelectorAll('#menusTableBody tr');
+
+            rows.forEach(row => {
+                const category = row.dataset.category?.toLowerCase() || '';
+                const available = row.dataset.available === 'true';
+                const isPromo = row.dataset.promo === 'true';
+
+                let showRow = true;
+
+                // Apply category filter
+                if (categoryValue && category !== categoryValue) {
+                    showRow = false;
+                }
+
+                // Apply status filter
+                if (statusValue === 'available' && !available) {
+                    showRow = false;
+                } else if (statusValue === 'unavailable' && available) {
+                    showRow = false;
+                }
+
+                // Apply promo filter
+                if (promoValue === 'promo' && !isPromo) {
+                    showRow = false;
+                } else if (promoValue === 'normal' && isPromo) {
+                    showRow = false;
+                }
+
+                row.style.display = showRow ? '' : 'none';
+            });
+        };
+
+        categoryFilter.addEventListener('change', applyFilters);
+        statusFilter.addEventListener('change', applyFilters);
+        promoFilter.addEventListener('change', applyFilters);
+
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                categoryFilter.value = '';
+                statusFilter.value = '';
+                promoFilter.value = '';
+                applyFilters();
+            });
+        }
+
+        // Setup event delegation for menu action buttons
+        document.addEventListener('click', (e) => {
+            // Handle delete menu button
+            const deleteBtn = e.target.closest('.delete-menu-btn');
+            if (deleteBtn) {
+                const menuId = parseInt(deleteBtn.dataset.menuId);
+                const menuName = deleteBtn.dataset.menuName;
+                this.deleteMenu(menuId, menuName);
+                return;
+            }
+
+            // Handle edit menu button
+            const editBtn = e.target.closest('.edit-menu-btn');
+            if (editBtn) {
+                const menuId = parseInt(editBtn.dataset.menuId);
+                this.editMenu(menuId);
+                return;
+            }
+
+            // Handle toggle availability button
+            const toggleBtn = e.target.closest('.toggle-availability-btn');
+            if (toggleBtn) {
+                const menuId = parseInt(toggleBtn.dataset.menuId);
+                this.toggleMenuAvailability(menuId);
+                return;
+            }
+        });
     }
 
     async deleteCategory(categoryId) {
