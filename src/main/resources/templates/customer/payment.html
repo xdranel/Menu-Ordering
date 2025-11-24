@@ -1,70 +1,463 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pembayaran - ChopChop Restaurant</title>
-    <meta name="_csrf" th:content="${_csrf.token}"/>
-    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+
+    <!-- Bootstrap CSS -->
+    <link href="/webjars/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Customer CSS -->
+    <link th:href="@{/css/customer-style.css}" rel="stylesheet">
+
+    <!-- CSRF Token (if enabled) -->
+    <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}"/>
+
+    <style>
+        .payment-page-container {
+            background-color: var(--light-gray);
+            min-height: calc(100vh - 70px);
+            margin-top: 70px;
+            padding: 3rem 0;
+        }
+
+        .payment-card {
+            background-color: white;
+            border-radius: 12px;
+            padding: 3rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: #4CAF50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+        }
+
+        .success-icon i {
+            font-size: 3rem;
+            color: white;
+        }
+
+        .payment-title {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+
+        .order-number-display {
+            text-align: center;
+            font-size: 1.1rem;
+            color: var(--dark-gray);
+            margin-bottom: 2rem;
+        }
+
+        .order-number-display strong {
+            color: var(--primary-red);
+            font-size: 1.3rem;
+        }
+
+        .qr-section {
+            background-color: var(--light-gray);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .qr-section h5 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 1.5rem;
+        }
+
+        .qr-code-box {
+            background-color: white;
+            border: 3px dashed var(--medium-gray);
+            border-radius: 12px;
+            padding: 2rem;
+            display: inline-block;
+            margin-bottom: 1.5rem;
+        }
+
+        #qrCodeImage {
+            max-width: 250px;
+            width: 100%;
+            height: auto;
+        }
+
+        .payment-amount {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary-red);
+            margin-top: 1rem;
+        }
+
+        .info-box {
+            background-color: #E3F2FD;
+            border-left: 4px solid #2196F3;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+        }
+
+        .info-box i {
+            color: #2196F3;
+            font-size: 1.2rem;
+            margin-right: 0.5rem;
+        }
+
+        .info-box p {
+            margin: 0;
+            color: #1976D2;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 2rem;
+        }
+
+        .btn-simulate {
+            padding: 0.75rem 2rem;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-simulate:hover {
+            background-color: #45A049;
+        }
+
+        .btn-check-status {
+            padding: 0.75rem 2rem;
+            background-color: var(--primary-red);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-check-status:hover {
+            background-color: var(--dark-red);
+        }
+
+        .btn-back-menu {
+            padding: 0.75rem 2rem;
+            background-color: transparent;
+            color: var(--primary-red);
+            border: 2px solid var(--primary-red);
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-back-menu:hover {
+            background-color: var(--primary-red);
+            color: white;
+        }
+
+        .order-details-card {
+            background-color: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            max-width: 700px;
+            margin: 2rem auto 0;
+        }
+
+        .details-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: var(--text-dark);
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--light-gray);
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .detail-value {
+            color: var(--dark-gray);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .status-pending {
+            background-color: #FFF3E0;
+            color: #F57C00;
+        }
+
+        .status-paid {
+            background-color: #E8F5E9;
+            color: #388E3C;
+        }
+
+        @media (max-width: 992px) {
+            .payment-page-container {
+                padding: 2rem 1rem;
+            }
+
+            .payment-card,
+            .order-details-card {
+                max-width: 100%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .payment-page-container {
+                padding: 1.5rem 1rem;
+            }
+
+            .payment-card {
+                padding: 2rem 1.5rem;
+            }
+
+            .payment-title {
+                font-size: 1.5rem;
+            }
+
+            .order-number-display {
+                font-size: 1rem;
+            }
+
+            .order-number-display strong {
+                font-size: 1.1rem;
+            }
+
+            .success-icon {
+                width: 60px;
+                height: 60px;
+            }
+
+            .success-icon i {
+                font-size: 2rem;
+            }
+
+            .qr-section h5 {
+                font-size: 1rem;
+            }
+
+            .qr-code-box {
+                padding: 1.5rem;
+            }
+
+            #qrCodeImage {
+                max-width: 200px;
+            }
+
+            .payment-amount {
+                font-size: 1.2rem;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .action-buttons button,
+            .action-buttons a {
+                width: 100%;
+            }
+
+            .order-details-card {
+                padding: 1.5rem;
+            }
+
+            .details-title {
+                font-size: 1.1rem;
+            }
+
+            .detail-row {
+                flex-direction: column;
+                gap: 0.25rem;
+                align-items: flex-start;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .payment-page-container {
+                padding: 1rem 0.75rem;
+            }
+
+            .payment-card {
+                padding: 1.5rem 1rem;
+            }
+
+            .payment-title {
+                font-size: 1.3rem;
+            }
+
+            .order-number-display {
+                font-size: 0.9rem;
+            }
+
+            .success-icon {
+                width: 50px;
+                height: 50px;
+                margin-bottom: 1rem;
+            }
+
+            .success-icon i {
+                font-size: 1.5rem;
+            }
+
+            .qr-section {
+                padding: 1.5rem;
+            }
+
+            .qr-section h5 {
+                font-size: 0.95rem;
+            }
+
+            .qr-code-box {
+                padding: 1rem;
+            }
+
+            #qrCodeImage {
+                max-width: 180px;
+            }
+
+            .payment-amount {
+                font-size: 1.1rem;
+            }
+
+            .info-box {
+                padding: 0.75rem 1rem;
+                font-size: 0.9rem;
+            }
+
+            .btn-simulate,
+            .btn-check-status,
+            .btn-back-menu {
+                padding: 0.65rem 1.5rem;
+                font-size: 0.95rem;
+            }
+
+            .order-details-card {
+                padding: 1rem;
+            }
+
+            .details-title {
+                font-size: 1rem;
+            }
+
+            .detail-label,
+            .detail-value {
+                font-size: 0.9rem;
+            }
+        }
+    </style>
 </head>
 <body>
 <!-- Customer Header -->
 <div th:replace="~{fragments/customer-header :: customer-header}"></div>
 
-<div class="container py-4">
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <div class="card">
-                <div class="card-header bg-success text-white">
-                    <h4 class="card-title mb-0"><i class="fas fa-qrcode me-2"></i>Pembayaran QR Code</h4>
+<div class="payment-page-container">
+    <div class="container">
+        <!-- Payment Card -->
+        <div class="payment-card">
+            <div class="success-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+
+            <h2 class="payment-title">Pesanan Berhasil Dibuat!</h2>
+            <div class="order-number-display">
+                Nomor Pesanan: <strong id="orderNumber">-</strong>
+            </div>
+
+            <!-- QR Code Section -->
+            <div class="qr-section">
+                <h5><i class="fas fa-qrcode me-2"></i>Scan QR Code untuk Pembayaran</h5>
+                <div class="qr-code-box">
+                    <img id="qrCodeImage" src="" alt="QR Code">
                 </div>
-                <div class="card-body text-center">
-                    <div class="mb-4">
-                        <i class="fas fa-check-circle text-success fa-3x mb-3"></i>
-                        <h3>Pesanan Berhasil Dibuat!</h3>
-                        <p class="text-muted">Nomor Pesanan: <strong id="orderNumber">-</strong></p>
-                    </div>
-
-                    <div class="mb-4">
-                        <h5>Scan QR Code untuk Pembayaran</h5>
-                        <div id="qrCodeContainer" class="my-4">
-                            <img id="qrCodeImage" src="" alt="QR Code" class="img-fluid" style="max-width: 250px;">
-                        </div>
-                        <p class="text-muted">Total Pembayaran: <strong id="paymentAmount">Rp.0</strong></p>
-                    </div>
-
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        Silakan scan QR code di atas menggunakan aplikasi e-wallet atau mobile banking Anda.
-                    </div>
-
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-center">
-                        <button class="btn btn-success" onclick="simulatePayment()" id="simulatePaymentBtn">
-                            <i class="fas fa-check-circle me-2"></i> Simulasi Pembayaran (TEST)
-                        </button>
-                        <button class="btn btn-primary" onclick="checkPaymentStatus()">
-                            <i class="fas fa-sync-alt me-2"></i> Cek Status Pembayaran
-                        </button>
-                        <a th:href="@{/customer/menu}" class="btn btn-outline-secondary">
-                            <i class="fas fa-home me-2"></i> Kembali ke Menu
-                        </a>
-                    </div>
+                <div class="payment-amount">
+                    Total Pembayaran: <span id="paymentAmount">Rp.0</span>
                 </div>
             </div>
 
-            <div class="card mt-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0"><i class="fas fa-receipt me-2"></i>Detail Pesanan</h5>
-                </div>
-                <div class="card-body">
-                    <div id="orderDetails">
-                        <!-- Order details will be populated by JavaScript -->
-                    </div>
-                </div>
+            <!-- Info Box -->
+            <div class="info-box">
+                <i class="fas fa-info-circle"></i>
+                <p>Silakan scan QR code di atas menggunakan aplikasi e-wallet atau mobile banking Anda.</p>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button class="btn-simulate" onclick="simulatePayment()" id="simulatePaymentBtn">
+                    <i class="fas fa-check-circle me-2"></i>Simulasi Pembayaran (TEST)
+                </button>
+                <button class="btn-check-status" onclick="checkPaymentStatus()">
+                    <i class="fas fa-sync-alt me-2"></i>Cek Status Pembayaran
+                </button>
+                <a th:href="@{/customer/menu}" class="btn-back-menu">
+                    <i class="fas fa-home me-2"></i>Kembali ke Menu
+                </a>
+            </div>
+        </div>
+
+        <!-- Order Details Card -->
+        <div class="order-details-card">
+            <h3 class="details-title">
+                <i class="fas fa-receipt me-2"></i>Detail Pesanan
+            </h3>
+            <div id="orderDetails">
+                <!-- Order details will be populated by JavaScript -->
             </div>
         </div>
     </div>
 </div>
 
-<!-- Load customer app script for payment functionality -->
+<!-- Footer -->
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<!-- JavaScript -->
+<script src="/webjars/jquery/3.6.0/jquery.min.js"></script>
+<script src="/webjars/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
 <script th:src="@{/js/customer-app.js}"></script>
 </body>
 </html>

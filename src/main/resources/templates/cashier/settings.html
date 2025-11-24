@@ -21,10 +21,47 @@
 
             <!-- Menu Management -->
             <div class="card">
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">Daftar Menu</h5>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMenuModal">
+                        <i class="fas fa-plus me-1"></i> Tambah Menu Baru
+                    </button>
                 </div>
                 <div class="card-body">
+                    <!-- Filter Section -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Filter Kategori:</label>
+                            <select id="categoryFilterMenu" class="form-select">
+                                <option value="">Semua Kategori</option>
+                                <option th:each="category : ${categories}"
+                                        th:value="${category.name}"
+                                        th:text="${category.name}"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Filter Status:</label>
+                            <select id="statusFilterMenu" class="form-select">
+                                <option value="">Semua Status</option>
+                                <option value="available">Tersedia</option>
+                                <option value="unavailable">Tidak Tersedia</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Filter Promo:</label>
+                            <select id="promoFilterMenu" class="form-select">
+                                <option value="">Semua</option>
+                                <option value="promo">Promo</option>
+                                <option value="normal">Normal</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 align-self-end">
+                            <button class="btn btn-secondary w-100" id="resetFiltersBtn">
+                                <i class="fas fa-redo me-1"></i> Reset
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="table-responsive">
                         <table class="table table-bordered table-hover" id="menusTable">
                             <thead class="table-light">
@@ -38,7 +75,10 @@
                             </tr>
                             </thead>
                             <tbody id="menusTableBody">
-                            <tr th:each="menu : ${menus}">
+                            <tr th:each="menu : ${menus}"
+                                th:data-category="${menu.category.name}"
+                                th:data-available="${menu.available}"
+                                th:data-promo="${menu.isPromo}">
                                 <td th:text="${menu.name}"></td>
                                 <td th:text="${menu.category.name}"></td>
                                 <td th:text="'Rp ' + ${#numbers.formatDecimal(menu.price, 0, 'COMMA', 2, 'POINT')}"></td>
@@ -52,13 +92,18 @@
                                 </td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-outline-primary"
-                                                th:onclick="'cashierApp.editMenu(' + ${menu.id} + ')'">
+                                        <button class="btn btn-outline-primary edit-menu-btn"
+                                                th:data-menu-id="${menu.id}">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <button class="btn btn-outline-success"
-                                                th:onclick="'cashierApp.toggleMenuAvailability(' + ${menu.id} + ')'"
+                                        <button class="btn btn-outline-success toggle-availability-btn"
+                                                th:data-menu-id="${menu.id}"
                                                 th:text="${menu.available ? 'Nonaktifkan' : 'Aktifkan'}">
+                                        </button>
+                                        <button class="btn btn-outline-danger delete-menu-btn"
+                                                th:data-menu-id="${menu.id}"
+                                                th:data-menu-name="${menu.name}">
+                                            <i class="fas fa-trash"></i>
                                         </button>
                                     </div>
                                 </td>
@@ -121,10 +166,114 @@
     </div>
 </div>
 
+<!-- Add Menu Modal -->
+<div class="modal fade" id="addMenuModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Tambah Menu Baru</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addMenuForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="addMenuName" class="form-label">Nama Menu <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="addMenuName" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="addMenuCategory" class="form-label">Kategori <span class="text-danger">*</span></label>
+                                <select class="form-select" id="addMenuCategory" required>
+                                    <option value="">Pilih Kategori</option>
+                                    <option th:each="category : ${categories}"
+                                            th:value="${category.id}"
+                                            th:text="${category.name}"></option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="addMenuDescription" class="form-label">Deskripsi</label>
+                        <textarea class="form-control" id="addMenuDescription" rows="3"></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="addMenuPrice" class="form-label">Harga <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="addMenuPrice" min="0" step="1000" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="addMenuImageUrl" class="form-label">URL Gambar</label>
+                                <input type="text" class="form-control" id="addMenuImageUrl" placeholder="/images/menu/...">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="addMenuAvailable" checked>
+                                    <label class="form-check-label" for="addMenuAvailable">
+                                        Menu Tersedia
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="addMenuIsPromo">
+                                    <label class="form-check-label" for="addMenuIsPromo">
+                                        Menu Promo
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="addMenuPromoSection" style="display: none;">
+                        <div class="mb-3">
+                            <label for="addMenuPromoPrice" class="form-label">Harga Promo</label>
+                            <input type="number" class="form-control" id="addMenuPromoPrice" min="0" step="1000">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary" onclick="cashierApp.createNewMenu()">
+                    <i class="fas fa-save me-1"></i> Simpan Menu
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Menu Modal (Existing - keeping it as is) -->
+<!-- Add the edit menu modal here if it doesn't exist yet -->
+
 <!-- Bootstrap JS -->
 <script src="/webjars/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
 
 <!-- Cashier App JavaScript -->
 <script th:src="@{/js/cashier-app.js}"></script>
+
+<script>
+    // Show/hide promo price field when promo checkbox is toggled - Add Menu
+    document.getElementById('addMenuIsPromo').addEventListener('change', function() {
+        document.getElementById('addMenuPromoSection').style.display = this.checked ? 'block' : 'none';
+        if (!this.checked) {
+            document.getElementById('addMenuPromoPrice').value = '';
+        }
+    });
+</script>
 </body>
 </html>

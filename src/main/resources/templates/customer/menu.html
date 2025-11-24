@@ -1,67 +1,72 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Menu - ChopChop Restaurant</title>
 
-    <meta name="_csrf" th:content="${_csrf.token}"/>
-    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <!-- Bootstrap CSS -->
+    <link href="/webjars/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Customer CSS -->
+    <link th:href="@{/css/customer-style.css}" rel="stylesheet">
+
+    <!-- CSRF Token (if enabled) -->
+    <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}"/>
 </head>
 <body>
 <!-- Customer Header -->
 <div th:replace="~{fragments/customer-header :: customer-header}"></div>
 
-<div class="container-fluid">
-    <div class="row">
-        <!-- Sidebar Categories -->
-        <div th:replace="~{fragments/menu-sidebar :: menu-sidebar}"></div>
+<div class="app-layout">
+    <div class="row g-0">
+        <!-- Left Sidebar -->
+        <div class="col-auto">
+            <div th:replace="~{fragments/menu-sidebar :: menu-sidebar}"></div>
+        </div>
 
-        <!-- Main Content -->
-        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
-            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                <h1 class="h2">Menu Makanan & Minuman</h1>
-                <div class="btn-toolbar mb-2 mb-md-0">
-                    <div class="input-group">
-                        <input type="text" class="form-control" placeholder="Cari menu..." id="searchInput">
-                        <button class="btn btn-outline-secondary" type="button" id="searchButton">
-                            <i class="fas fa-search"></i>
-                        </button>
-                    </div>
+        <!-- Main Content Area -->
+        <div class="col main-area">
+            <div class="content-header">
+                <h1 class="page-title">MENU MAKANAN</h1>
+                <div class="search-box">
+                    <input type="text" class="form-control search-input" placeholder="Cari menu..." id="searchInput">
+                    <button class="btn search-btn" type="button" id="searchButton">
+                        <i class="fas fa-search"></i>
+                    </button>
                 </div>
             </div>
 
             <!-- Menu Items Grid -->
-            <div class="row" id="menuItems">
-                <div th:each="menu : ${menus}" class="col-xl-3 col-lg-4 col-md-6 mb-4">
-                    <div class="card menu-card h-100" th:data-category="${menu.category.name}">
-                        <div class="card-body">
-                            <div th:if="${menu.imageUrl}" class="text-center mb-3">
-                                <img th:src="${menu.imageUrl}" th:alt="${menu.name}" class="img-fluid rounded" style="max-height: 120px;">
+            <div class="menu-grid" id="menuItems">
+                <div th:each="menu : ${menus}" class="menu-item" th:data-category="${menu.category.name}">
+                    <div class="menu-card">
+                        <div class="menu-image" th:if="${menu.imageUrl}">
+                            <img th:src="${menu.imageUrl}" th:alt="${menu.name}" class="img-fluid">
+                            <div th:if="${menu.isPromo}" class="promo-badge">PROMO</div>
+                        </div>
+                        <div class="menu-details">
+                            <h5 class="menu-name" th:text="${menu.name}"></h5>
+                            <p class="menu-description" th:text="${menu.description}"></p>
+                            <div class="menu-price">
+                                <span class="price-current" th:text="'Rp ' + ${#numbers.formatDecimal(menu.currentPrice, 0, 'COMMA', 0, 'POINT')}"></span>
+                                <span th:if="${menu.isPromo && menu.promoPrice != null}"
+                                      class="price-original"
+                                      th:text="'Rp ' + ${#numbers.formatDecimal(menu.price, 0, 'COMMA', 0, 'POINT')}"></span>
                             </div>
-                            <h5 class="card-title" th:text="${menu.name}"></h5>
-                            <p class="card-text text-muted small" th:text="${menu.description}"></p>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <span class="h5 text-primary mb-0" th:text="'Rp ' + ${#numbers.formatDecimal(menu.currentPrice, 0, 'COMMA', 2, 'POINT')}"></span>
-                                    <span th:if="${menu.isPromo && menu.promoPrice != null}"
-                                          class="text-muted text-decoration-line-through small ms-2"
-                                          th:text="'Rp ' + ${#numbers.formatDecimal(menu.price, 0, 'COMMA', 2, 'POINT')}"></span>
-                                </div>
-                                <div th:if="${menu.isPromo}" class="badge bg-danger">PROMO</div>
-                            </div>
-                            <div class="mt-3">
-                                <div class="input-group">
-                                    <button class="btn btn-outline-secondary btn-sm btn-decrease"
-                                            th:data-menu-id="${menu.id}">
+                            <div class="menu-actions">
+                                <div class="quantity-control">
+                                    <button class="qty-btn btn-decrease" th:data-menu-id="${menu.id}">
                                         <i class="fas fa-minus"></i>
                                     </button>
-                                    <input type="number" class="form-control form-control-sm text-center quantity-input"
-                                           th:data-menu-id="${menu.id}" value="1" min="1" max="10">
-                                    <button class="btn btn-outline-secondary btn-sm btn-increase"
-                                            th:data-menu-id="${menu.id}">
+                                    <input type="number" class="qty-input" th:data-menu-id="${menu.id}" value="1" min="1" max="10">
+                                    <button class="qty-btn btn-increase" th:data-menu-id="${menu.id}">
                                         <i class="fas fa-plus"></i>
                                     </button>
                                 </div>
-                                <button class="btn btn-primary btn-sm w-100 mt-2 btn-add-to-cart"
+                                <button class="btn-add-cart btn-add-to-cart"
                                         th:data-menu-id="${menu.id}"
                                         th:disabled="${!menu.available}">
                                     <i class="fas fa-cart-plus me-1"></i>
@@ -72,12 +77,146 @@
                     </div>
                 </div>
             </div>
-        </main>
+        </div>
+
+        <!-- Right Sidebar - Cart -->
+        <div class="col-auto">
+            <div class="cart-sidebar">
+                <h3 class="cart-title">Keranjang</h3>
+                <div class="cart-items" id="cartItemsDisplay">
+                    <!-- Cart items will be populated by JavaScript -->
+                    <div class="empty-cart">
+                        <i class="fas fa-shopping-cart"></i>
+                        <p>Keranjang kosong</p>
+                    </div>
+                </div>
+                <div class="cart-summary">
+                    <div class="subtotal">
+                        <span>subtotal</span>
+                        <span class="subtotal-amount" id="cartSubtotal">Rp.0</span>
+                    </div>
+                    <button class="btn-pay" id="checkoutBtn">Bayar</button>
+                    <button class="btn-clear" id="clearCartBtn">Bersihkan Keranjang</button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
+<!-- Mobile Category Menu Toggle Button -->
+<button class="mobile-menu-toggle" id="mobileMenuToggle" type="button">
+    <i class="fas fa-bars"></i>
+</button>
+
+<!-- Mobile Cart Summary (shown on mobile when cart sidebar is hidden) -->
+<div class="mobile-cart-summary" id="mobileCartSummary" style="display: none;">
+    <div class="mobile-cart-header">
+        <div class="mobile-cart-info">
+            <i class="fas fa-shopping-cart me-2"></i>
+            <span id="mobileCartCount">0</span> Item
+        </div>
+        <div class="mobile-cart-total" id="mobileCartTotal">Rp 0</div>
+    </div>
+    <div class="mobile-cart-actions">
+        <button class="btn-mobile-clear" id="mobileCleanCartBtn">
+            <i class="fas fa-trash me-1"></i> Bersihkan
+        </button>
+        <button class="btn-mobile-pay" id="mobileCheckoutBtn">
+            <i class="fas fa-credit-card me-1"></i> Bayar
+        </button>
+    </div>
+</div>
+
+<!-- Mobile Overlay -->
+<div class="mobile-overlay" id="mobileOverlay"></div>
+
 <!-- Footer -->
 <div th:replace="~{fragments/footer :: footer}"></div>
+
+<!-- JavaScript -->
+<script src="/webjars/jquery/3.6.0/jquery.min.js"></script>
+<script src="/webjars/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/customer-app.js}"></script>
 <script th:src="@{/js/menu-filter.js}"></script>
+
+<!-- Mobile Menu Toggle Script -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const mobileOverlay = document.getElementById('mobileOverlay');
+        const sidebar = document.querySelector('.sidebar-left');
+
+        if (mobileMenuToggle && mobileOverlay && sidebar) {
+            let isToggling = false;
+
+            // Toggle sidebar on button click
+            mobileMenuToggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (isToggling) return; // Prevent multiple rapid clicks
+                isToggling = true;
+
+                const isOpen = sidebar.classList.contains('mobile-open');
+
+                if (!isOpen) {
+                    // Opening sidebar
+                    sidebar.classList.add('mobile-open');
+                    mobileOverlay.classList.add('active');
+
+                    // Change icon
+                    const icon = this.querySelector('i');
+                    icon.classList.remove('fa-bars');
+                    icon.classList.add('fa-times');
+                } else {
+                    // Closing sidebar
+                    sidebar.classList.remove('mobile-open');
+                    mobileOverlay.classList.remove('active');
+
+                    // Change icon
+                    const icon = this.querySelector('i');
+                    icon.classList.remove('fa-times');
+                    icon.classList.add('fa-bars');
+                }
+
+                // Reset toggle lock after animation
+                setTimeout(() => {
+                    isToggling = false;
+                }, 350);
+            });
+
+            // Close sidebar when clicking overlay
+            mobileOverlay.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                sidebar.classList.remove('mobile-open');
+                mobileOverlay.classList.remove('active');
+
+                // Reset icon
+                const icon = mobileMenuToggle.querySelector('i');
+                icon.classList.remove('fa-times');
+                icon.classList.add('fa-bars');
+            });
+
+            // Close sidebar when clicking a category
+            const categoryLinks = sidebar.querySelectorAll('.category-link, .category-btn');
+            categoryLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    // Let the category filter work first
+                    setTimeout(function() {
+                        sidebar.classList.remove('mobile-open');
+                        mobileOverlay.classList.remove('active');
+
+                        // Reset icon
+                        const icon = mobileMenuToggle.querySelector('i');
+                        icon.classList.remove('fa-times');
+                        icon.classList.add('fa-bars');
+                    }, 100);
+                });
+            });
+        }
+    });
+</script>
 </body>
 </html>

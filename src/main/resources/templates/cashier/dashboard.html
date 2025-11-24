@@ -13,97 +13,72 @@
 <div class="container-fluid mt-4">
     <div class="row">
         <main class="col-md-12">
-            <!-- Welcome Section -->
-            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center mb-4">
-                <h1 class="h2">
-                    <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+            <!-- Page Header -->
+            <div class="page-header">
+                <h1 class="page-title">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
                 </h1>
-                <div class="btn-toolbar mb-2 mb-md-0">
-                    <div class="btn-group me-2">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="refreshDashboard()">
-                            <i class="fas fa-sync-alt me-1"></i> Refresh
-                        </button>
-                    </div>
+                <div class="btn-toolbar">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="refreshDashboard()">
+                        <i class="fas fa-sync-alt me-1"></i> Refresh
+                    </button>
                 </div>
             </div>
 
             <!-- Statistics Cards -->
             <div class="row">
                 <div class="col-xl-3 col-md-6 mb-4">
-                    <div class="card border-left-primary shadow h-100 py-2">
-                        <div class="card-body">
-                            <div class="row no-gutters align-items-center">
-                                <div class="col mr-2">
-                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                        Pendapatan Hari Ini
-                                    </div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800" id="todayRevenue">
-                                        Rp.0
-                                    </div>
-                                </div>
-                                <div class="col-auto">
-                                    <i class="fas fa-money-bill-wave fa-2x text-gray-300"></i>
-                                </div>
+                    <div class="stat-card primary">
+                        <div class="stat-card-header">
+                            <div class="stat-card-content">
+                                <div class="stat-card-label">Pendapatan Hari Ini</div>
+                                <div class="stat-card-value" id="todayRevenue">Rp 0</div>
+                            </div>
+                            <div class="stat-card-icon">
+                                <i class="fas fa-money-bill-wave"></i>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-xl-3 col-md-6 mb-4">
-                    <div class="card border-left-success shadow h-100 py-2">
-                        <div class="card-body">
-                            <div class="row no-gutters align-items-center">
-                                <div class="col mr-2">
-                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                        Pesanan Hari Ini
-                                    </div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800" id="todayOrders">
-                                        0
-                                    </div>
-                                </div>
-                                <div class="col-auto">
-                                    <i class="fas fa-shopping-cart fa-2x text-gray-300"></i>
-                                </div>
+                    <div class="stat-card success">
+                        <div class="stat-card-header">
+                            <div class="stat-card-content">
+                                <div class="stat-card-label">Pesanan Hari Ini</div>
+                                <div class="stat-card-value" id="todayOrders">0</div>
+                            </div>
+                            <div class="stat-card-icon">
+                                <i class="fas fa-receipt"></i>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-xl-3 col-md-6 mb-4">
-                    <div class="card border-left-warning shadow h-100 py-2">
-                        <div class="card-body">
-                            <div class="row no-gutters align-items-center">
-                                <div class="col mr-2">
-                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                        Pesanan Pending
-                                    </div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800" id="pendingOrders">
-                                        0
-                                    </div>
-                                </div>
-                                <div class="col-auto">
-                                    <i class="fas fa-clock fa-2x text-gray-300"></i>
-                                </div>
+                    <div class="stat-card warning">
+                        <div class="stat-card-header">
+                            <div class="stat-card-content">
+                                <div class="stat-card-label">Pesanan Pending</div>
+                                <div class="stat-card-value" id="pendingOrders">0</div>
+                            </div>
+                            <div class="stat-card-icon">
+                                <i class="fas fa-clock"></i>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-xl-3 col-md-6 mb-4">
-                    <div class="card border-left-info shadow h-100 py-2">
-                        <div class="card-body">
-                            <div class="row no-gutters align-items-center">
-                                <div class="col mr-2">
-                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                        Menu Tersedia
-                                    </div>
-                                    <div class="h5 mb-0 font-weight-bold text-gray-800" id="availableMenus">
-                                        0
-                                    </div>
-                                </div>
-                                <div class="col-auto">
-                                    <i class="fas fa-utensils fa-2x text-gray-300"></i>
-                                </div>
+                    <div class="stat-card info">
+                        <div class="stat-card-header">
+                            <div class="stat-card-content">
+                                <div class="stat-card-label">Menu Tersedia</div>
+                                <div class="stat-card-value" id="availableMenus">0</div>
+                            </div>
+                            <div class="stat-card-icon">
+                                <i class="fas fa-utensils"></i>
                             </div>
                         </div>
                     </div>
@@ -114,11 +89,11 @@
             <div class="row">
                 <!-- Recent Orders -->
                 <div class="col-lg-8 mb-4">
-                    <div class="card shadow">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">
-                                <i class="fas fa-list me-1"></i>Pesanan Terbaru
-                            </h6>
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title">
+                                <i class="fas fa-receipt me-2"></i>Pesanan Terbaru
+                            </h5>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
@@ -143,21 +118,21 @@
 
                 <!-- Quick Actions -->
                 <div class="col-lg-4 mb-4">
-                    <div class="card shadow">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">
-                                <i class="fas fa-bolt me-1"></i>Aksi Cepat
-                            </h6>
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title">
+                                <i class="fas fa-bolt me-2"></i>Aksi Cepat
+                            </h5>
                         </div>
                         <div class="card-body">
-                            <div class="d-grid gap-2">
-                                <a th:href="@{/cashier/orders}" class="btn btn-primary btn-lg">
+                            <div class="d-grid gap-3">
+                                <a th:href="@{/cashier/orders}" class="btn btn-primary">
                                     <i class="fas fa-plus-circle me-2"></i>Pesanan Baru
                                 </a>
-                                <a th:href="@{/cashier/reports}" class="btn btn-success btn-lg">
-                                    <i class="fas fa-chart-bar me-2"></i>Lihat Laporan
+                                <a th:href="@{/cashier/reports}" class="btn btn-success">
+                                    <i class="fas fa-chart-line me-2"></i>Lihat Laporan
                                 </a>
-                                <a th:href="@{/cashier/settings}" class="btn btn-warning btn-lg">
+                                <a th:href="@{/cashier/settings}" class="btn btn-warning">
                                     <i class="fas fa-cog me-2"></i>Pengaturan Menu
                                 </a>
                             </div>
@@ -165,27 +140,27 @@
                     </div>
 
                     <!-- System Status -->
-                    <div class="card shadow mt-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">
-                                <i class="fas fa-info-circle me-1"></i>Status Sistem
-                            </h6>
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h5 class="card-title">
+                                <i class="fas fa-info-circle me-2"></i>System Status
+                            </h5>
                         </div>
                         <div class="card-body">
                             <div class="mb-3">
                                 <span class="badge bg-success me-2"><i class="fas fa-circle"></i></span>
-                                <span>Sistem Kasir: <strong>Online</strong></span>
+                                <span>Cashier: <strong>Online</strong></span>
                             </div>
                             <div class="mb-3">
                                 <span class="badge bg-success me-2"><i class="fas fa-circle"></i></span>
                                 <span>Database: <strong>Connected</strong></span>
                             </div>
-                            <div class="mb-3">
-                                <span class="badge bg-success me-2"><i class="fas fa-circle"></i></span>
-                                <span>Printer: <strong>Ready</strong></span>
-                            </div>
+<!--                            <div class="mb-3">-->
+<!--                                <span class="badge bg-success me-2"><i class="fas fa-circle"></i></span>-->
+<!--                                <span>Printer: <strong>Ready</strong></span>-->
+<!--                            </div>-->
                             <div>
-                                <small class="text-muted">Terakhir update: <span id="lastUpdate">-</span></small>
+                                <small class="text-muted">Last Updated: <span id="lastUpdate">-</span></small>
                             </div>
                         </div>
                     </div>

@@ -18,6 +18,9 @@
                     <i class="fas fa-chart-bar me-2"></i>Laporan dan Analisis
                 </h1>
                 <div class="btn-toolbar mb-2 mb-md-0">
+                    <button type="button" class="btn btn-sm btn-warning me-2" onclick="cashierApp.generateMissingInvoices()">
+                        <i class="fas fa-sync me-1"></i> Generate Missing Invoices
+                    </button>
                     <button type="button" class="btn btn-sm btn-success" onclick="cashierApp.exportReport()">
                         <i class="fas fa-download me-1"></i> Export PDF
                     </button>
@@ -87,12 +90,87 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-info shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                        Pembayaran QR
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800" id="qrPaymentCount">
+                                        0
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-qrcode fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-warning shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                        Pembayaran Tunai
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800" id="cashPaymentCount">
+                                        0
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-money-bill fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Second Row - Cancelled Orders -->
+            <div class="row mb-4">
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-danger shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                        Pesanan Dibatalkan
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800" id="cancelledOrders">
+                                        0
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-times-circle fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Recent Invoices -->
             <div class="card">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">Invoice Terbaru</h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Invoice Terbaru</h5>
+                        <div class="btn-group" role="group">
+                            <input type="radio" class="btn-check" name="invoiceFilter" id="filterAll" value="all" checked>
+                            <label class="btn btn-outline-primary btn-sm" for="filterAll">Semua</label>
+
+                            <input type="radio" class="btn-check" name="invoiceFilter" id="filterQR" value="qr">
+                            <label class="btn btn-outline-info btn-sm" for="filterQR">QR Code</label>
+
+                            <input type="radio" class="btn-check" name="invoiceFilter" id="filterCash" value="cash">
+                            <label class="btn btn-outline-warning btn-sm" for="filterCash">Tunai</label>
+                        </div>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -115,6 +193,27 @@
                 </div>
             </div>
         </main>
+    </div>
+</div>
+
+<!-- Invoice Details Modal -->
+<div class="modal fade" id="invoiceDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detail Invoice</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="invoiceDetailsContent">
+                <!-- Invoice details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                <button type="button" class="btn btn-success" id="printInvoiceBtn">
+                    <i class="fas fa-print"></i> Cetak
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 

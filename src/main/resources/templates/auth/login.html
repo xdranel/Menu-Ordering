@@ -7,82 +7,250 @@
     <link href="/webjars/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        :root {
+            --primary-red: #A63939;
+            --dark-red: #8B2F2F;
+            --light-gray: #F5F5F5;
+            --border-gray: #E0E0E0;
+            --text-dark: #333333;
+            --text-muted: #757575;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
         .login-container {
             min-height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-color: var(--light-gray);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
+
         .login-card {
             border: none;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            background: white;
+            max-width: 440px;
+            width: 100%;
         }
+
+        .login-header {
+            background-color: var(--primary-red);
+            padding: 2.5rem 2rem 2rem 2rem;
+            border-radius: 16px 16px 0 0;
+            text-align: center;
+        }
+
         .brand-logo {
+            width: 80px;
+            height: 80px;
+            background-color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem auto;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .brand-logo i {
             font-size: 2.5rem;
-            color: #667eea;
+            color: var(--primary-red);
+        }
+
+        .login-header h3 {
+            color: white;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            font-size: 1.75rem;
+        }
+
+        .login-header p {
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 0;
+            font-size: 0.95rem;
+        }
+
+        .login-body {
+            padding: 2.5rem 2rem;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .input-group-text {
+            background-color: white;
+            border: 2px solid var(--border-gray);
+            border-right: none;
+            color: var(--text-muted);
+        }
+
+        .form-control {
+            border: 2px solid var(--border-gray);
+            border-left: none;
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-red);
+            box-shadow: none;
+        }
+
+        .form-control:focus + .input-group-text,
+        .input-group:focus-within .input-group-text {
+            border-color: var(--primary-red);
+            color: var(--primary-red);
+        }
+
+        .btn-login {
+            background-color: var(--primary-red);
+            color: white;
+            border: none;
+            padding: 0.85rem 1.5rem;
+            font-weight: 600;
+            font-size: 1rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-login:hover {
+            background-color: var(--dark-red);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(166, 57, 57, 0.3);
+        }
+
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        .alert {
+            border-radius: 8px;
+            border: none;
+            padding: 1rem 1.25rem;
+            font-size: 0.9rem;
+        }
+
+        .alert-danger {
+            background-color: #FEE2E2;
+            color: #991B1B;
+        }
+
+        .alert-success {
+            background-color: #D1FAE5;
+            color: #065F46;
+        }
+
+        .login-footer {
+            text-align: center;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-gray);
+        }
+
+        .login-footer p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 576px) {
+            .login-card {
+                margin: 1rem;
+            }
+
+            .login-header {
+                padding: 2rem 1.5rem 1.5rem 1.5rem;
+            }
+
+            .login-body {
+                padding: 2rem 1.5rem;
+            }
+
+            .brand-logo {
+                width: 70px;
+                height: 70px;
+            }
+
+            .brand-logo i {
+                font-size: 2rem;
+            }
+
+            .login-header h3 {
+                font-size: 1.5rem;
+            }
         }
     </style>
 </head>
 <body>
-<div class="login-container d-flex align-items-center">
+<div class="login-container">
     <div class="container">
         <div class="row justify-content-center">
-            <div class="col-md-6 col-lg-4">
+            <div class="col-12 col-sm-10 col-md-8 col-lg-5">
                 <div class="card login-card">
-                    <div class="card-body p-5">
-                        <div class="text-center mb-4">
-                            <div class="brand-logo">
-                                <i class="fas fa-cash-register"></i>
-                            </div>
-                            <h3 class="card-title">ChopChop Restaurant</h3>
-                            <p class="text-muted">Login ke Sistem Kasir</p>
+                    <!-- Login Header -->
+                    <div class="login-header">
+                        <div class="brand-logo">
+                            <i class="fas fa-utensils"></i>
                         </div>
+                        <h3>ChopChop Restaurant</h3>
+                        <p>Sistem Manajemen Kasir</p>
+                    </div>
 
+                    <!-- Login Body -->
+                    <div class="login-body">
                         <form th:action="@{/auth/login}" method="post" th:object="${loginRequest}">
-                            <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show">
-                                <i class="fas fa-exclamation-triangle me-2"></i>
-                                Username atau password salah!
+                            <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show mb-4">
+                                <i class="fas fa-exclamation-circle me-2"></i>
+                                <strong>Login Gagal!</strong> Username atau password salah.
                                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                             </div>
 
-                            <div th:if="${param.logout}" class="alert alert-success alert-dismissible fade show">
+                            <div th:if="${param.logout}" class="alert alert-success alert-dismissible fade show mb-4">
                                 <i class="fas fa-check-circle me-2"></i>
-                                Anda telah berhasil logout!
+                                Anda telah berhasil logout.
                                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                             </div>
 
                             <div class="mb-3">
                                 <label for="username" class="form-label">Username</label>
                                 <div class="input-group">
-                                        <span class="input-group-text">
-                                            <i class="fas fa-user"></i>
-                                        </span>
+                                    <span class="input-group-text">
+                                        <i class="fas fa-user"></i>
+                                    </span>
                                     <input type="text" class="form-control" id="username" name="username"
-                                           th:field="*{username}" placeholder="Masukkan username" required>
+                                           th:field="*{username}" placeholder="Masukkan username" required autofocus>
                                 </div>
                             </div>
 
                             <div class="mb-4">
                                 <label for="password" class="form-label">Password</label>
                                 <div class="input-group">
-                                        <span class="input-group-text">
-                                            <i class="fas fa-lock"></i>
-                                        </span>
+                                    <span class="input-group-text">
+                                        <i class="fas fa-lock"></i>
+                                    </span>
                                     <input type="password" class="form-control" id="password" name="password"
                                            th:field="*{password}" placeholder="Masukkan password" required>
                                 </div>
                             </div>
 
-                            <div class="d-grid">
-                                <button type="submit" class="btn btn-primary btn-lg">
+                            <div class="d-grid mb-3">
+                                <button type="submit" class="btn btn-login">
                                     <i class="fas fa-sign-in-alt me-2"></i> Login
                                 </button>
                             </div>
                         </form>
 
-                        <div class="text-center mt-4">
-                            <p class="text-muted small">
-                                &copy; 2024 ChopChop Restaurant. Sistem Kasir v1.0
-                            </p>
+                        <div class="login-footer">
+                            <p>&copy; 2024 ChopChop Restaurant<br>Sistem Kasir v1.0</p>
                         </div>
                     </div>
                 </div>

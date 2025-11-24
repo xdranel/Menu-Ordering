@@ -2,21 +2,17 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <body>
 <div th:fragment="customer-header">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand fw-bold" th:href="@{/customer/menu}">
-                <i class="fas fa-utensils me-2"></i>
-                <span th:text="${appName ?: 'ChopChop Restaurant'}">ChopChop Restaurant</span>
+    <nav class="navbar navbar-expand-lg navbar-dark customer-header">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-bold d-flex align-items-center" th:href="@{/customer/menu}">
+                <div class="brand-logo-circle me-3">
+                    <i class="fas fa-utensils"></i>
+                </div>
+                <div class="brand-text">
+                    <div class="brand-name" th:text="${appName ?: 'ChopChop'}">ChopChop</div>
+                    <div class="brand-subtitle">Restaurant</div>
+                </div>
             </a>
-
-            <div class="navbar-nav ms-auto">
-                <!-- Cart Icon with Badge - Direct Link -->
-                <a class="nav-link position-relative" th:href="@{/customer/cart}" id="cartLink">
-                    <i class="fas fa-shopping-cart fa-lg text-white"></i>
-                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                          id="cartCount" style="display: none;">0</span>
-                </a>
-            </div>
         </div>
     </nav>
 </div>

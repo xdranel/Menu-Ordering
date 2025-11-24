@@ -2,26 +2,30 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <body>
 <div th:fragment="menu-sidebar">
-    <div class="col-md-3 col-lg-2 bg-light sidebar">
-        <div class="position-sticky pt-3">
-            <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
-                <span>KATEGORI</span>
-            </h6>
-            <ul class="nav flex-column mb-2">
-<!--                <li class="nav-item">-->
-<!--                    <a class="nav-link category-btn btn btn-outline-primary w-100 mb-2 text-start active"-->
-<!--                       href="#" data-category="SEMUA">-->
-<!--                        <i class="fas fa-th-large me-2"></i> SEMUA-->
-<!--                    </a>-->
-<!--                </li>-->
-                <li th:each="category : ${categories}">
-                    <a class="nav-link category-btn btn btn-outline-primary w-100 mb-2 text-start"
-                       href="#" th:data-category="${category.name}">
-                        <i class="fas fa-utensils me-2"></i>
-                        <span th:text="${category.name}"></span>
-                    </a>
-                </li>
-            </ul>
+    <div class="sidebar-left">
+        <div class="sidebar-content">
+            <!-- Logo Section -->
+<!--            <div class="sidebar-logo">-->
+<!--                <div class="logo-circle">-->
+<!--                    <i class="fas fa-utensils"></i>-->
+<!--                </div>-->
+<!--                <div class="logo-text">-->
+<!--                    <div class="logo-brand">ChopChop</div>-->
+<!--                </div>-->
+<!--            </div>-->
+
+            <!-- Category Section -->
+            <div class="sidebar-categories">
+                <h6 class="category-heading">KATEGORI MENU</h6>
+                <ul class="category-list">
+                    <li th:each="category : ${categories}" class="category-item">
+                        <a href="#" class="category-link" th:data-category="${category.name}">
+                            <i class="fas fa-utensils me-2"></i>
+                            <span th:text="${category.name}"></span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </div>
     </div>
 </div>

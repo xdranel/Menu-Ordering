@@ -3,11 +3,16 @@
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <body>
 <div th:fragment="cashier-header">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand fw-bold" th:href="@{/cashier/dashboard}">
-                <i class="fas fa-cash-register me-2"></i>
-                <span th:text="${appName ?: 'ChopChop Restaurant'}">ChopChop Restaurant</span>
+    <nav class="navbar navbar-expand-lg cashier-navbar">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand cashier-brand" th:href="@{/cashier/dashboard}">
+                <div class="brand-icon">
+                    <i class="fas fa-cash-register"></i>
+                </div>
+                <div class="brand-text-cashier">
+                    <div class="brand-name-cashier" th:text="${appName ?: 'ChopChop'}">ChopChop</div>
+                    <div class="brand-subtitle-cashier">Cashier Panel</div>
+                </div>
             </a>
 
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -15,47 +20,58 @@
             </button>
 
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
+                <ul class="navbar-nav cashier-nav-menu mx-auto">
                     <li class="nav-item">
-                        <a class="nav-link" th:href="@{/cashier/dashboard}"
+                        <a class="nav-link cashier-nav-link" th:href="@{/cashier/dashboard}"
                            th:classappend="${currentPath == '/cashier/dashboard' ? 'active' : ''}">
-                            <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Dashboard</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" th:href="@{/cashier/orders}"
+                        <a class="nav-link cashier-nav-link" th:href="@{/cashier/orders}"
                            th:classappend="${currentPath == '/cashier/orders' ? 'active' : ''}">
-                            <i class="fas fa-list me-1"></i> Pesanan
+                            <i class="fas fa-receipt"></i>
+                            <span>Pesanan</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" th:href="@{/cashier/reports}"
+                        <a class="nav-link cashier-nav-link" th:href="@{/cashier/reports}"
                            th:classappend="${currentPath == '/cashier/reports' ? 'active' : ''}">
-                            <i class="fas fa-chart-bar me-1"></i> Laporan
+                            <i class="fas fa-chart-line"></i>
+                            <span>Laporan</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" th:href="@{/cashier/settings}"
+                        <a class="nav-link cashier-nav-link" th:href="@{/cashier/settings}"
                            th:classappend="${currentPath == '/cashier/settings' ? 'active' : ''}">
-                            <i class="fas fa-cog me-1"></i> Pengaturan
+                            <i class="fas fa-cog"></i>
+                            <span>Pengaturan</span>
                         </a>
                     </li>
                 </ul>
 
                 <ul class="navbar-nav">
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
+                        <a class="nav-link dropdown-toggle cashier-user-dropdown" href="#" id="userDropdown" role="button"
                            data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-user me-1"></i>
-                            <span th:text="${cashier != null ? cashier.displayName : 'Cashier'}">Cashier</span>
+                            <div class="user-avatar">
+                                <i class="fas fa-user-circle"></i>
+                            </div>
+                            <span class="user-name" th:text="${cashier != null ? cashier.displayName : 'Cashier'}">Cashier</span>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><span class="dropdown-item-text text-muted" th:text="${cashier != null ? cashier.username : ''}"></span></li>
-                            <li><hr class="dropdown-divider"></li>
+                        <ul class="dropdown-menu dropdown-menu-end cashier-dropdown">
+<!--                            <li>-->
+<!--                                <span class="dropdown-item-text">-->
+<!--                                    <i class="fas fa-user me-2"></i>-->
+<!--                                    <span th:text="${cashier != null ? cashier.username : ''}"></span>-->
+<!--                                </span>-->
+<!--                            </li>-->
+<!--                            <li><hr class="dropdown-divider"></li>-->
                             <li>
                                 <form th:action="@{/auth/logout}" method="post" class="d-inline">
-                                    <button type="submit" class="dropdown-item">
-                                        <i class="fas fa-sign-out-alt me-1"></i> Logout
+                                    <button type="submit" class="dropdown-item logout-btn">
+                                        <i class="fas fa-sign-out-alt me-2"></i> Logout
                                     </button>
                                 </form>
                             </li>
