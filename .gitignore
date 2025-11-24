@@ -12,7 +12,6 @@ target/
 .settings
 .springBeans
 .sts4-cache
-.env
 
 ### IntelliJ IDEA ###
 .idea
@@ -32,3 +31,35 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Environment ###
+.env
+*.env
+
+### Logs ###
+*.log
+logs/
+
+### OS ###
+.DS_Store
+Thumbs.db
+
+### Backup files ###
+*~
+*.bak
+*.swp
+*.swo
+
+### Database ###
+*.db
+*.sqlite
+
+### Temporary files ###
+*.tmp
+temp/
+
+
+### MD for my ownself ###
+DEPLOYMENT_SECURITY.md
+SECURITY_REVIEW_SUMMARY.md
+DEPLOYMENT.md
