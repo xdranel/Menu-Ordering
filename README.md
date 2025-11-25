@@ -73,7 +73,7 @@ A restaurant ordering system built with Spring Boot, featuring real-time order m
    - Customer: http://localhost:8080
    - Cashier: http://localhost:8080/cashier/login
 
-See [INSTALLATION.md](docs/forme/INSTALLATION.md) for detailed setup instructions.
+See [INSTALLATION.md](docs/INSTALLATION.md) for detailed setup instructions.
 
 ## Default Credentials
 
@@ -108,8 +108,7 @@ menu-ordering-app/
 
 ## Documentation
 
-- [INSTALLATION.md](docs/forme/INSTALLATION.md) - Detailed installation guide
-- [DEPLOYMENT_SECURITY.md](docs/forme/DEPLOYMENT_SECURITY.md) - Security guide for production deployment
+- [INSTALLATION.md](docs/INSTALLATION.md) - Detailed installation guide
 - [docs/API.md](docs/API.md) - REST API reference
 
 ## Key Endpoints
@@ -177,4 +176,8 @@ java -jar target/menu-ordering-app-0.0.1-SNAPSHOT.jar
 
 ## Authors
 
-Team Hola Holo Dont Even Know What We're Doing
+Team Hola Holo Don't Even Know What We're Doing
+- [Gendhi Ramona P](https://github.com/XDX1O1)
+- [Anak Agung Bramasta Jaya](https://github.com/BramastaJaya)
+- [Haidar Fulca Kurniawan](https://github.com/sijuki09)
+- - [Haidar Fulca Kurniawan](https://github.com/Arkkop12)
