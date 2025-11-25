@@ -167,14 +167,14 @@ echo ""
 
 # Step 10: Create application directory
 print_info "Step 10: Setting up application directory..."
-mkdir -p /opt/menu-ordering-app
-chown -R chopchop:chopchop /opt/menu-ordering-app
-print_success "Directory /opt/menu-ordering-app created"
+mkdir -p /opt/Menu-Ordering
+chown -R chopchop:chopchop /opt/Menu-Ordering
+print_success "Directory /opt/Menu-Ordering created"
 echo ""
 
 # Step 11: Create .env template
 print_info "Step 11: Creating .env configuration..."
-cat > /opt/menu-ordering-app/.envjust << EOF
+cat > /opt/Menu-Ordering/.env << EOF
 # Database Configuration
 DB_URL=jdbc:mysql://localhost:3306/${DB_NAME}?useSSL=false&serverTimezone=Asia/Jakarta&allowPublicKeyRetrieval=true
 DB_USERNAME=${DB_USER}
@@ -199,8 +199,8 @@ SPRING_FLYWAY_BASELINE_ON_MIGRATE=true
 SERVER_PORT=8080
 EOF
 
-chmod 600 /opt/menu-ordering-app/.envjust
-chown chopchop:chopchop /opt/menu-ordering-app/.envjust
+chmod 600 /opt/Menu-Ordering/.env
+chown chopchop:chopchop /opt/Menu-Ordering/.env
 print_success ".env file created"
 echo ""
 
