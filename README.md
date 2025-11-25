@@ -178,5 +178,3 @@ java -jar target/menu-ordering-app-0.0.1-SNAPSHOT.jar
 ## Authors
 
 Team Hola Holo Dont Even Know What We're Doing
-Test auto-deploy
-Test SSH auth
