@@ -164,7 +164,8 @@ class CustomerApp {
 
             if (addButton) {
                 addButton.addEventListener('click', () => {
-                    const quantity = parseInt(card.querySelector('.quantity-input').value) || 1;
+                    const quantityInput = card.querySelector('.qty-input');
+                    const quantity = quantityInput ? parseInt(quantityInput.value) || 1 : 1;
                     this.addToCart(parseInt(menuId), quantity);
                 });
             }
@@ -424,17 +425,38 @@ class CustomerApp {
             return;
         }
 
+        // Get CSRF token
+        const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
+
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+
+        // Add CSRF token if available
+        if (csrfToken && csrfHeader) {
+            headers[csrfHeader] = csrfToken;
+        }
+
         fetch('/customer/api/cart/clear', {
             method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json'
-            }
+            headers: headers
         })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
+                    // Clear local cart
+                    this.cart = [];
+                    this.saveCart();
+                    this.updateCartCount();
+                    this.updateCartDropdown();
+
+                    // Update cart sidebar if it exists
+                    if (typeof this.updateCartSidebar === 'function') {
+                        this.updateCartSidebar();
+                    }
+
                     this.showToast('Keranjang berhasil dikosongkan', 'success');
-                    this.updateCartSidebar();
                 } else {
                     this.showToast('Gagal mengosongkan keranjang', 'error');
                 }
