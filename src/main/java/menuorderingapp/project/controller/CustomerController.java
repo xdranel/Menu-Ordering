@@ -241,6 +241,11 @@ public class CustomerController extends BaseController {
 
             Order updatedOrder = orderService.createOrder(order);
 
+            // Auto-generate invoice for the paid order
+            // Use cashier ID if available, otherwise use null for customer self-service
+            Long cashierId = updatedOrder.getCashier() != null ? updatedOrder.getCashier().getId() : null;
+            invoiceService.generateInvoice(updatedOrder, cashierId);
+
             PaymentResponse paymentResponse = new PaymentResponse();
             paymentResponse.setSuccess(true);
             paymentResponse.setOrderNumber(orderNumber);

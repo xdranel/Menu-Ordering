@@ -13,6 +13,7 @@ class CashierApp {
         this.setupOrderModalListener();
         this.loadDashboardData();
         this.loadOrdersPage();
+        this.setupOrderFilterListeners(); // Setup once during initialization
         this.setupReportsPage();
         this.setupRealTimeUpdates();
         this.setupMenuFilters(); // Setup menu filters on settings page
@@ -425,25 +426,34 @@ class CashierApp {
                 apiUrl = `/cashier/api/orders/by-date?date=${customDate}`;
             }
 
+            console.log('Loading orders from:', apiUrl);
+            console.log('Filter params:', {filterType, customDate, statusFilter, paymentFilter});
+
             const response = await fetch(apiUrl);
             const data = await response.json();
 
+            console.log('Orders API response:', data);
+
             if (data.success && data.data) {
+                console.log(`Received ${data.data.length} orders from API`);
+
                 // Store all orders for filtering
                 this.allOrders = data.data;
 
                 // Apply status and payment filters
                 let filteredOrders = this.applyOrderFilters(data.data, statusFilter, paymentFilter);
+                console.log(`After filtering: ${filteredOrders.length} orders`);
 
                 this.updateOrdersTable(filteredOrders);
                 this.updateOrderCount(filteredOrders.length);
+            } else {
+                console.error('API returned no data or failed:', data);
             }
         } catch (error) {
             console.error('Error loading orders:', error);
         }
 
         await this.loadAvailableMenus();
-        this.setupOrderFilterListeners();
     }
 
     applyOrderFilters(orders, statusFilter, paymentFilter) {
