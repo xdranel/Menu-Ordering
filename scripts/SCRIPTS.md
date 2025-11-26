@@ -115,13 +115,12 @@ bash scripts/reset_database.sh
 - Want to return to default menu & cashiers
 - Migration error that corrupted database
 - Testing fresh installation
-- Presentation preparation (clean state)
 
 **Result**:
 - Fresh database with default data
 - Default menu items (from migrations)
 - Default cashiers: admin, kasir1, kasir2
-- Password: password123 (change after presentation!)
+- Password: password123
 - Backup at `/opt/Menu-Ordering/backups/backup_before_reset_*.sql`
 
 ### 6. webhook_deploy.sh
