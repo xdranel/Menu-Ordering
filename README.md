@@ -180,4 +180,4 @@ Team Hola Holo Don't Even Know What We're Doing
 - [Gendhi Ramona P](https://github.com/XDX1O1)
 - [Anak Agung Bramasta Jaya](https://github.com/BramastaJaya)
 - [Haidar Fulca Kurniawan](https://github.com/sijuki09)
-- [Haidar Fulca Kurniawan](https://github.com/Arkkop12)
+- [Arka Dwi Indrastata](https://github.com/Arkkop12)
