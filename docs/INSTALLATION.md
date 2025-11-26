@@ -14,7 +14,7 @@ Complete setup guide for installing and running the ChopChop Restaurant applicat
 
 ```bash
 git clone <repository-url>
-cd menu-ordering-app
+cd Menu-Ordering
 ```
 
 ### Step 2: Create MySQL Database
@@ -313,8 +313,7 @@ mvn spring-boot:run
 - menu_audit_log - Change history
 
 ### Sample Data
-- 9 Categories (Semua, Promo, Paket Kombo, etc.)
-- 20+ Menu Items
+- 1 Categories (Semua)
 - 3 Cashier Accounts (admin, kasir1, kasir2)
 
 ## Post-Installation
