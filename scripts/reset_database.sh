@@ -95,7 +95,7 @@ echo ""
 # Step 3: Drop and recreate database
 print_info "[3/5] Dropping database..."
 mysql -u $DB_USERNAME -p$DB_PASSWORD -e "DROP DATABASE IF EXISTS $DB_NAME;" 2>/dev/null || \
-mysql -u chopchop_user -p -e "DROP DATABASE IF EXISTS $DB_NAME;"
+mysql -u root -p -e "DROP DATABASE IF EXISTS $DB_NAME;"
 
 print_success "Database dropped"
 echo ""
