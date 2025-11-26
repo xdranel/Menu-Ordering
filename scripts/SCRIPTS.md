@@ -122,7 +122,7 @@ bash scripts/reset_database.sh
 - Default menu items (from migrations)
 - Default cashiers: admin, kasir1, kasir2
 - Password: password123 (change after presentation!)
-- Backup at `/opt/menu-ordering-app/backups/backup_before_reset_*.sql`
+- Backup at `/opt/Menu-Ordering/backups/backup_before_reset_*.sql`
 
 ### 6. webhook_deploy.sh
 **Function**: Automatic deployment triggered by GitHub webhook
@@ -422,13 +422,13 @@ sudo bash setup_vps.sh
 3. **Clone application**:
 ```bash
 cd /opt
-sudo git clone https://github.com/YOUR_USERNAME/menu-ordering-app.git
-sudo chown -R chopchop:chopchop menu-ordering-app
+sudo git clone https://github.com/YOUR_USERNAME/Menu-Ordering.git
+sudo chown -R chopchop:chopchop Menu-Ordering
 ```
 
 4. **Build application**:
 ```bash
-cd /opt/menu-ordering-app
+cd /opt/Menu-Ordering
 mvn clean package -DskipTests
 ```
 
@@ -454,7 +454,7 @@ sudo systemctl status chopchop
 ssh chopchop@YOUR_VPS_IP
 
 # Run deploy script
-cd /opt/menu-ordering-app
+cd /opt/Menu-Ordering
 bash scripts/deploy.sh
 ```
 
@@ -495,7 +495,7 @@ Setup automatic daily backups:
 crontab -e
 
 # Add this line (backup every day at 2 AM)
-0 2 * * * /opt/menu-ordering-app/scripts/backup_database.sh >> /var/log/chopchop-backup.log 2>&1
+0 2 * * * /opt/Menu-Ordering/scripts/backup_database.sh >> /var/log/chopchop-backup.log 2>&1
 ```
 
 ## Troubleshooting
@@ -523,7 +523,7 @@ mvn clean package -DskipTests
 mysql -u chopchop_user -p restaurant_db
 
 # Check .env file
-cat /opt/menu-ordering-app/.env
+cat /opt/Menu-Ordering/.env
 
 # Restart MySQL
 sudo systemctl restart mysql
@@ -540,7 +540,7 @@ chmod +x scripts/*.sh
 chmod 600 .env
 
 # Application directory
-chown -R chopchop:chopchop /opt/menu-ordering-app
+chown -R chopchop:chopchop /opt/Menu-Ordering
 ```
 
 ## Security Notes
@@ -552,10 +552,9 @@ chown -R chopchop:chopchop /opt/menu-ordering-app
 5. **Monitor logs** for suspicious activity
 6. **Change default app passwords** after deployment
 
-## Support
+## Errors
 
 If there are errors:
 1. Check logs: `sudo journalctl -u chopchop -n 100`
 2. Check service status: `sudo systemctl status chopchop`
 3. Check database: `mysql -u chopchop_user -p restaurant_db`
-4. Refer to: `/opt/menu-ordering-app/HOSTINGER_DEPLOYMENT.md`
