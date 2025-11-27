@@ -74,7 +74,12 @@ public class PaymentServiceImpl implements PaymentService {
 
         Order order = orderOpt.get();
 
-        if (amountTendered < order.getTotal().doubleValue()) {
+        // Calculate final amount with 10% tax
+        double subtotal = order.getTotal().doubleValue();
+        double tax = subtotal * 0.10;
+        double finalAmount = subtotal + tax;
+
+        if (amountTendered < finalAmount) {
             return false;
         }
 
@@ -88,10 +93,15 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public String generatePaymentQRCode(Order order) {
+        // Calculate final amount with 10% tax
+        double subtotal = order.getTotal().doubleValue();
+        double tax = subtotal * 0.10;
+        double finalAmount = subtotal + tax;
+
         String paymentData = String.format(
-                "order_number=%s&amount=%s&merchant=ChopChopRestaurant",
+                "order_number=%s&amount=%.2f&merchant=ChopChopRestaurant",
                 order.getOrderNumber(),
-                order.getTotal().toString()
+                finalAmount
         );
         return generateQRCode(paymentData);
     }

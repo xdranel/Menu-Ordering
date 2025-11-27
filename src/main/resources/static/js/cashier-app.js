@@ -231,11 +231,15 @@ class CashierApp {
 
         let html = '';
         orders.forEach(order => {
+            // Calculate final amount with 10% tax
+            const subtotal = order.total || 0;
+            const finalAmount = subtotal * 1.10;
+
             html += `
             <tr>
                 <td>${order.orderNumber}</td>
                 <td>${order.customerName || 'Walk-in Customer'}</td>
-                <td>Rp ${order.total?.toLocaleString('id-ID') || '0'}</td>
+                <td>Rp ${finalAmount.toLocaleString('id-ID')}</td>
                 <td>
                     <span class="badge bg-${this.getStatusColor(order.status)}">
                         ${order.status}
@@ -616,11 +620,15 @@ class CashierApp {
 
         let html = '';
         orders.forEach(order => {
+            // Calculate final amount with 10% tax
+            const subtotal = order.total || 0;
+            const finalAmount = subtotal * 1.10;
+
             html += `
                 <tr>
                     <td>${order.orderNumber}</td>
                     <td>${order.customerName || 'Walk-in'}</td>
-                    <td>Rp ${order.total?.toLocaleString('id-ID') || '0'}</td>
+                    <td>Rp ${finalAmount.toLocaleString('id-ID')}</td>
                     <td>
                         <span class="badge bg-${this.getStatusColor(order.status)}">
                             ${order.status}
@@ -1105,8 +1113,16 @@ class CashierApp {
                         </tbody>
                         <tfoot>
                             <tr class="table-light">
+                                <td colspan="3" class="text-end"><strong>Subtotal:</strong></td>
+                                <td class="text-end">Rp ${order.total.toLocaleString('id-ID')}</td>
+                            </tr>
+                            <tr class="table-light">
+                                <td colspan="3" class="text-end"><strong>Pajak (10%):</strong></td>
+                                <td class="text-end">Rp ${(order.total * 0.10).toLocaleString('id-ID')}</td>
+                            </tr>
+                            <tr class="table-light border-top">
                                 <td colspan="3" class="text-end"><strong>TOTAL:</strong></td>
-                                <td class="text-end"><strong class="text-primary">Rp ${order.total.toLocaleString('id-ID')}</strong></td>
+                                <td class="text-end"><strong class="text-primary">Rp ${(order.total * 1.10).toLocaleString('id-ID')}</strong></td>
                             </tr>
                         </tfoot>
                     </table>
@@ -1133,10 +1149,15 @@ class CashierApp {
                 const order = data.data.find(o => o.orderNumber === orderNumber);
 
                 if (order) {
+                    // Calculate tax (10%) and final amount
+                    const subtotal = order.total;
+                    const tax = subtotal * 0.10;
+                    const finalAmount = subtotal + tax;
+
                     // Populate modal
                     document.getElementById('paymentOrderNumber').value = order.orderNumber;
-                    document.getElementById('paymentTotal').value = `Rp ${order.total.toLocaleString('id-ID')}`;
-                    document.getElementById('paymentTotal').dataset.total = order.total;
+                    document.getElementById('paymentTotal').value = `Rp ${finalAmount.toLocaleString('id-ID')}`;
+                    document.getElementById('paymentTotal').dataset.total = finalAmount;
 
                     
                     document.getElementById('paymentMethod').value = 'CASH';
@@ -1324,7 +1345,8 @@ class CashierApp {
                 const completedOrders = filteredOrders.filter(o => o.status === 'COMPLETED');
                 const cancelledOrders = filteredOrders.filter(o => o.status === 'CANCELLED');
                 const paidOrders = filteredOrders.filter(o => o.paymentStatus === 'PAID');
-                const totalRevenue = paidOrders.reduce((sum, order) => sum + (order.total || 0), 0);
+                // Calculate revenue with 10% tax included
+                const totalRevenue = paidOrders.reduce((sum, order) => sum + ((order.total || 0) * 1.10), 0);
 
                 // Payment method breakdown
                 const qrPayments = paidOrders.filter(o => o.paymentMethod === 'QR_CODE').length;
