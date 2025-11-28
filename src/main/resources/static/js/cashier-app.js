@@ -2366,7 +2366,7 @@ class CashierApp {
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">URL Gambar</label>
-                                    <input type="text" class="form-control" id="editMenuImageUrl" placeholder="/images/menu/...">
+                                    <input type="text" class="form-control" id="editMenuImageUrl" placeholder="/images/menu/... or online url https://...">
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">Harga Normal</label>
