@@ -349,6 +349,7 @@ sudo chmod -R g+rw <APP_DIR>
 
 # Create sudoers file for webhook user
 sudo tee /etc/sudoers.d/<WEBHOOK_USER> > /dev/null <<EOF
+# System commands as root
 <WEBHOOK_USER> ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart <APP_NAME>
 <WEBHOOK_USER> ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop <APP_NAME>
 <WEBHOOK_USER> ALL=(ALL) NOPASSWD: /usr/bin/systemctl start <APP_NAME>
@@ -356,6 +357,10 @@ sudo tee /etc/sudoers.d/<WEBHOOK_USER> > /dev/null <<EOF
 <WEBHOOK_USER> ALL=(ALL) NOPASSWD: /usr/bin/git
 <WEBHOOK_USER> ALL=(ALL) NOPASSWD: /bin/chown
 <WEBHOOK_USER> ALL=(ALL) NOPASSWD: /bin/rm
+
+# Run git and mvn as APP_USER (critical for deployment)
+<WEBHOOK_USER> ALL=(<APP_USER>) NOPASSWD: /usr/bin/git
+<WEBHOOK_USER> ALL=(<APP_USER>) NOPASSWD: /usr/bin/mvn
 EOF
 
 sudo chmod 0440 /etc/sudoers.d/<WEBHOOK_USER>

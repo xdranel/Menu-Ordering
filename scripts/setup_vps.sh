@@ -168,6 +168,11 @@ else
         echo "$WEBHOOK_USER ALL=(ALL) NOPASSWD: /usr/bin/git" >> /etc/sudoers.d/"$WEBHOOK_USER"
         echo "$WEBHOOK_USER ALL=(ALL) NOPASSWD: /bin/chown" >> /etc/sudoers.d/"$WEBHOOK_USER"
         echo "$WEBHOOK_USER ALL=(ALL) NOPASSWD: /bin/rm" >> /etc/sudoers.d/"$WEBHOOK_USER"
+        
+        # Allow webhook to run git and mvn as APP_USER (critical for deployment script)
+        echo "$WEBHOOK_USER ALL=($APP_USER) NOPASSWD: /usr/bin/git" >> /etc/sudoers.d/"$WEBHOOK_USER"
+        echo "$WEBHOOK_USER ALL=($APP_USER) NOPASSWD: /usr/bin/mvn" >> /etc/sudoers.d/"$WEBHOOK_USER"
+        
         chmod 0440 /etc/sudoers.d/"$WEBHOOK_USER"
         print_success "Webhook user configured with limited sudo permissions"
     fi
