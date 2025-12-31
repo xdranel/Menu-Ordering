@@ -92,7 +92,7 @@ GIT_BRANCH="main"
 
 # GitHub repository URL (used for webhook setup documentation)
 # Example: https://github.com/YOUR_USERNAME/Menu-Ordering.git
-GITHUB_REPO_URL="https://github.com/YOUR_USERNAME/Menu-Ordering.git"
+GITHUB_REPO_URL="https://github.com/XDX1O1/Menu-Ordering.git"
 
 # --------------------------------------------
 # Systemd Service Configuration
