@@ -1,6 +1,41 @@
 # Deployment Scripts
 
-Collection of scripts to facilitate ChopChop application deployment to VPS.
+Collection of scripts to facilitate application deployment to VPS.
+
+## ⚠️ IMPORTANT: Configuration Required
+
+**Before using these scripts**, you must edit `config.sh` to match your application and VPS setup.
+
+### Quick Configuration Steps:
+
+1. Open `scripts/config.sh` in a text editor
+2. Update the following key variables:
+   - `APP_NAME`: Internal service name (e.g., "myapp")
+   - `APP_DISPLAY_NAME`: Display name for your application
+   - `REPO_NAME`: Your GitHub repository name
+   - `APP_USER`: System user that will run the application
+   - `APP_DIR`: Directory where application will be installed
+   - `JAR_NAME`: Name of your JAR file
+   - `DEFAULT_DB_NAME`: Default database name
+   - `DEFAULT_DB_USER`: Default database user
+   - `SERVER_PORT`: Application port (default: 8080)
+   - `JVM_XMX`: Maximum heap size based on your VPS RAM
+
+3. Save the file
+
+### Configuration File Location
+
+All scripts automatically source `config.sh` from the same directory. The configuration file contains:
+- Application metadata (names, paths)
+- System users and directories
+- Database defaults
+- JVM memory settings
+- Network ports
+- Backup retention settings
+
+See `config.sh` for detailed comments on each variable.
+
+---
 
 ## Scripts Available
 
@@ -10,7 +45,8 @@ Collection of scripts to facilitate ChopChop application deployment to VPS.
 **Usage**:
 ```bash
 # Upload script to VPS
-scp setup_vps.sh root@YOUR_VPS_IP:/root/
+scp scripts/setup_vps.sh root@YOUR_VPS_IP:/root/
+scp scripts/config.sh root@YOUR_VPS_IP:/root/
 
 # SSH to VPS
 ssh root@YOUR_VPS_IP
@@ -26,9 +62,9 @@ sudo bash setup_vps.sh
 - Git
 - Nginx
 - UFW Firewall
-- Creates user `chopchop`
+- Creates application user (configurable in config.sh)
 - Setup database
-- Creates directory `/opt/Menu-Ordering`
+- Creates application directory (configurable in config.sh)
 
 ### 2. create_service.sh
 **Function**: Create systemd service for application auto-start
@@ -46,12 +82,14 @@ sudo bash scripts/create_service.sh
 
 **Commands after service creation**:
 ```bash
-sudo systemctl start chopchop    # Start
-sudo systemctl stop chopchop     # Stop
-sudo systemctl restart chopchop  # Restart
-sudo systemctl status chopchop   # Status
-sudo journalctl -u chopchop -f   # Logs
+sudo systemctl start <APP_NAME>    # Start
+sudo systemctl stop <APP_NAME>     # Stop
+sudo systemctl restart <APP_NAME>  # Restart
+sudo systemctl status <APP_NAME>   # Status
+sudo journalctl -u <APP_NAME> -f   # Logs
 ```
+
+> Replace `<APP_NAME>` with the value you set in `config.sh`
 
 ### 3. deploy.sh
 **Function**: Deploy/update application (pull, build, restart)
@@ -89,8 +127,10 @@ bash scripts/backup_database.sh
 
 **Restore backup**:
 ```bash
-mysql -u chopchop_user -p restaurant_db < backups/backup_restaurant_db_20241124_120000.sql
+mysql -u <DB_USER> -p <DB_NAME> < backups/backup_<DB_NAME>_20241124_120000.sql
 ```
+
+> Replace placeholders with your actual database name and user from `config.sh`
 
 ### 5. reset_database.sh
 **Function**: Reset database to initial state (fresh start)
@@ -202,9 +242,9 @@ mkdir -p /opt/webhooks
 cat > /opt/webhooks/hooks.json << 'EOF'
 [
   {
-    "id": "chopchop-deploy",
-    "execute-command": "/opt/Menu-Ordering/scripts/webhook_deploy.sh",
-    "command-working-directory": "/opt/Menu-Ordering",
+    "id": "app-deploy",
+    "execute-command": "/path/to/your/app/scripts/webhook_deploy.sh",
+    "command-working-directory": "/path/to/your/app",
     "response-message": "Deployment started",
     "trigger-rule": {
       "match": {
@@ -225,6 +265,7 @@ EOF
 
 # Replace YOUR_WEBHOOK_SECRET_HERE with a secure random string
 # Generate one with: openssl rand -hex 32
+# Also update the paths to match your APP_DIR from config.sh
 ```
 
 ### Step 3: Create Webhook Service
@@ -233,7 +274,7 @@ EOF
 # Create systemd service for webhook listener
 cat > /etc/systemd/system/webhook-listener.service << 'EOF'
 [Unit]
-Description=Webhook Listener for ChopChop Deployments
+Description=Webhook Listener for Deployments
 After=network.target
 
 [Service]
@@ -265,7 +306,7 @@ ufw allow 9000/tcp
 1. Go to your GitHub repository
 2. Navigate to **Settings** → **Webhooks** → **Add webhook**
 3. Configure:
-   - **Payload URL**: `http://YOUR_VPS_IP:9000/hooks/chopchop-deploy`
+   - **Payload URL**: `http://YOUR_VPS_IP:9000/hooks/app-deploy`
    - **Content type**: `application/json`
    - **Secret**: Same secret you used in `hooks.json`
    - **Events**: Select "Just the push event"
@@ -277,18 +318,19 @@ ufw allow 9000/tcp
 
 ```bash
 # Give webhook user access to application directory
-chown -R chopchop:chopchop /opt/Menu-Ordering
-chmod -R g+rw /opt/Menu-Ordering
+# Use the APP_USER and APP_DIR from your config.sh
+chown -R <APP_USER>:<APP_USER> <APP_DIR>
+chmod -R g+rw <APP_DIR>
 
-# Add webhook user to chopchop group (if not already done)
-usermod -aG chopchop webhook
+# Add webhook user to app group (if not already done)
+usermod -aG <APP_USER> webhook
 
 # Make deployment script executable
-chmod +x /opt/Menu-Ordering/scripts/webhook_deploy.sh
+chmod +x <APP_DIR>/scripts/webhook_deploy.sh
 
 # Ensure webhook user can write to log
-touch /var/log/chopchop-deploy.log
-chown webhook:webhook /var/log/chopchop-deploy.log
+touch /var/log/<APP_NAME>-deploy.log
+chown webhook:webhook /var/log/<APP_NAME>-deploy.log
 ```
 
 ### Step 7: Test the Setup
@@ -304,7 +346,7 @@ git push origin main
 **Method 2: Manual Trigger**
 ```bash
 # SSH as webhook user
-sudo -u webhook bash /opt/Menu-Ordering/scripts/webhook_deploy.sh
+sudo -u webhook bash <APP_DIR>/scripts/webhook_deploy.sh
 ```
 
 **Method 3: Test GitHub Webhook**
@@ -317,7 +359,7 @@ sudo -u webhook bash /opt/Menu-Ordering/scripts/webhook_deploy.sh
 
 ```bash
 # Watch deployment logs in real-time
-tail -f /var/log/chopchop-deploy.log
+tail -f /var/log/<APP_NAME>-deploy.log
 
 # Check webhook listener status
 systemctl status webhook-listener
@@ -326,7 +368,7 @@ systemctl status webhook-listener
 journalctl -u webhook-listener -f
 
 # Check application status after deployment
-sudo systemctl status chopchop
+sudo systemctl status <APP_NAME>
 ```
 
 ### Troubleshooting Webhooks
@@ -359,13 +401,13 @@ chmod -R g+rw /opt/Menu-Ordering
 **Deployment fails:**
 ```bash
 # Check deployment logs
-tail -n 100 /var/log/chopchop-deploy.log
+tail -n 100 /var/log/<APP_NAME>-deploy.log
 
 # Check application logs
-sudo journalctl -u chopchop -n 50
+sudo journalctl -u <APP_NAME> -n 50
 
 # Test script manually as webhook user
-sudo -u webhook bash /opt/Menu-Ordering/scripts/webhook_deploy.sh
+sudo -u webhook bash <APP_DIR>/scripts/webhook_deploy.sh
 ```
 
 ### Security Notes for Webhooks
@@ -421,13 +463,16 @@ sudo bash setup_vps.sh
 3. **Clone application**:
 ```bash
 cd /opt
-sudo git clone https://github.com/YOUR_USERNAME/Menu-Ordering.git
-sudo chown -R chopchop:chopchop Menu-Ordering
+sudo git clone <YOUR_GITHUB_REPO_URL>
+cd <REPO_NAME>
+sudo chown -R <APP_USER>:<APP_USER> .
 ```
+
+> Use the repository URL and paths from your `config.sh`
 
 4. **Build application**:
 ```bash
-cd /opt/Menu-Ordering
+cd <APP_DIR>
 mvn clean package -DskipTests
 ```
 
@@ -438,22 +483,22 @@ sudo bash scripts/create_service.sh
 
 6. **Start application**:
 ```bash
-sudo systemctl start chopchop
+sudo systemctl start <APP_NAME>
 ```
 
 7. **Verify**:
 ```bash
-sudo systemctl status chopchop
+sudo systemctl status <APP_NAME>
 ```
 
 ### Update Application
 
 ```bash
 # SSH to VPS
-ssh chopchop@YOUR_VPS_IP
+ssh <APP_USER>@YOUR_VPS_IP
 
 # Run deploy script
-cd /opt/Menu-Ordering
+cd <APP_DIR>
 bash scripts/deploy.sh
 ```
 
@@ -472,17 +517,17 @@ bash scripts/reset_database.sh
 
 **Check logs**:
 ```bash
-sudo journalctl -u chopchop -f
+sudo journalctl -u <APP_NAME> -f
 ```
 
 **Check status**:
 ```bash
-sudo systemctl status chopchop
+sudo systemctl status <APP_NAME>
 ```
 
 **Restart if needed**:
 ```bash
-sudo systemctl restart chopchop
+sudo systemctl restart <APP_NAME>
 ```
 
 ## Automated Backups (Cron)
@@ -494,7 +539,7 @@ Setup automatic daily backups:
 crontab -e
 
 # Add this line (backup every day at 2 AM)
-0 2 * * * /opt/Menu-Ordering/scripts/backup_database.sh >> /var/log/chopchop-backup.log 2>&1
+0 2 * * * <APP_DIR>/scripts/backup_database.sh >> /var/log/<APP_NAME>-backup.log 2>&1
 ```
 
 ## Troubleshooting
@@ -507,10 +552,10 @@ chmod +x scripts/*.sh
 ### Service Won't Start
 ```bash
 # Check logs
-sudo journalctl -u chopchop -n 100
+sudo journalctl -u <APP_NAME> -n 100
 
 # Check JAR exists
-ls -lh target/menu-ordering-app-0.0.1-SNAPSHOT.jar
+ls -lh <JAR_PATH>
 
 # Rebuild
 mvn clean package -DskipTests
@@ -519,10 +564,10 @@ mvn clean package -DskipTests
 ### Database Connection Error
 ```bash
 # Test connection
-mysql -u chopchop_user -p restaurant_db
+mysql -u <DB_USER> -p <DB_NAME>
 
 # Check .env file
-cat /opt/Menu-Ordering/.env
+cat <APP_DIR>/.env
 
 # Restart MySQL
 sudo systemctl restart mysql
@@ -539,8 +584,10 @@ chmod +x scripts/*.sh
 chmod 600 .env
 
 # Application directory
-chown -R chopchop:chopchop /opt/Menu-Ordering
+chown -R <APP_USER>:<APP_USER> <APP_DIR>
 ```
+
+> Use values from your `config.sh`
 
 ## Security Notes
 

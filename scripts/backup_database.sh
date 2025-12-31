@@ -1,9 +1,18 @@
 #!/bin/bash
 
-# ChopChop Restaurant - Database Backup Script
+# Database Backup Script
 # Usage: bash backup_database.sh
 
 set -e
+
+# Load configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/config.sh" ]; then
+    source "$SCRIPT_DIR/config.sh"
+else
+    echo "ERROR: config.sh not found!"
+    exit 1
+fi
 
 # Colors
 GREEN='\033[0;32m'
@@ -16,10 +25,10 @@ print_error() { echo -e "${RED}✗ $1${NC}"; }
 print_info() { echo -e "${YELLOW}→ $1${NC}"; }
 
 # Load environment variables
-if [ -f "/opt/Menu-Ordering/.env" ]; then
-    source /opt/Menu-Ordering/.env
+if [ -f "$ENV_FILE" ]; then
+    source "$ENV_FILE"
 else
-    print_error ".env file not found at /opt/Menu-Ordering/.env"
+    print_error ".env file not found at $ENV_FILE"
     exit 1
 fi
 
@@ -35,8 +44,7 @@ print_info "User: $DB_USERNAME"
 echo ""
 
 # Create backup directory
-BACKUP_DIR="/opt/Menu-Ordering/backups"
-mkdir -p $BACKUP_DIR
+mkdir -p "$BACKUP_DIR"
 
 # Generate backup filename with timestamp
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
@@ -64,11 +72,11 @@ if [ -f "$BACKUP_FILE" ]; then
     BACKUP_COUNT=$(ls -1 $BACKUP_DIR/*.sql 2>/dev/null | wc -l)
     print_info "Total backups: $BACKUP_COUNT"
 
-    # Cleanup old backups (keep last 7)
-    if [ $BACKUP_COUNT -gt 7 ]; then
-        print_info "Cleaning up old backups (keeping last 7)..."
+    # Cleanup old backups (keep last N)
+    if [ $BACKUP_COUNT -gt $BACKUP_RETENTION ]; then
+        print_info "Cleaning up old backups (keeping last $BACKUP_RETENTION)..."
         cd $BACKUP_DIR
-        ls -t *.sql | tail -n +8 | xargs rm -f
+        ls -t *.sql | tail -n +$(($BACKUP_RETENTION + 1)) | xargs rm -f
         print_success "Old backups removed"
     fi
 

@@ -1,16 +1,27 @@
 #!/bin/bash
 
-# ChopChop Restaurant - VPS Setup Script
-# Untuk Ubuntu 22.04 LTS
-# Author: Team Hola Holo
+# VPS Setup Script
+# For Ubuntu 22.04 LTS
 # Usage: sudo bash setup_vps.sh
 # Run this once on a brand new VPS
-# useradd -m chopchop
-# mkdir -p /opt/Menu-Ordering
-# chown -R chopchop:chopchop /opt/Menu-Ordering
-# Coba
 
 set -e  # Exit on error
+
+# Load configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/config.sh" ]; then
+    source "$SCRIPT_DIR/config.sh"
+else
+    echo "ERROR: config.sh not found!"
+    echo "Please make sure config.sh exists in the same directory as this script."
+    exit 1
+fi
+
+# Validate configuration
+if ! validate_config; then
+    echo "Please check your config.sh file and ensure all required variables are set."
+    exit 1
+fi
 
 # Colors for output
 RED='\033[0;31m'
@@ -38,7 +49,7 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 print_info "=========================================="
-print_info "ChopChop Restaurant - VPS Setup Script"
+print_info "${APP_DISPLAY_NAME} - VPS Setup Script"
 print_info "=========================================="
 echo ""
 
@@ -107,18 +118,11 @@ echo ""
 print_info "Step 7: Configuring UFW Firewall..."
 apt install -y ufw
 
-# Allow SSH first (IMPORTANT!)
-ufw allow 22/tcp
-print_success "SSH port 22 allowed"
-
-# Allow HTTP/HTTPS
-ufw allow 80/tcp
-ufw allow 443/tcp
-print_success "HTTP/HTTPS allowed"
-
-# Allow Spring Boot port
-ufw allow 8080/tcp
-print_success "Port 8080 allowed"
+# Configure firewall ports from config
+for port in "${FIREWALL_PORTS[@]}"; do
+    ufw allow "$port"
+done
+print_success "Firewall ports configured"
 
 # Enable firewall
 echo "y" | ufw enable
@@ -127,41 +131,41 @@ echo ""
 
 # Step 8: Create application user
 print_info "Step 8: Setting up application user..."
-if id "chopchop" &>/dev/null; then
-    print_success "User 'chopchop' already exists"
+if id "$APP_USER" &>/dev/null; then
+    print_success "User '$APP_USER' already exists"
 else
-    read -p "Create user 'chopchop'? (y/n): " -r
+    read -p "Create user '$APP_USER'? (y/n): " -r
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        adduser --disabled-password --gecos "" chopchop
-        usermod -aG sudo chopchop
-        print_success "User 'chopchop' created"
+        adduser --disabled-password --gecos "" "$APP_USER"
+        usermod -aG sudo "$APP_USER"
+        print_success "User '$APP_USER' created"
 
         # Set password
-        print_info "Please set password for user 'chopchop':"
-        passwd chopchop
+        print_info "Please set password for user '$APP_USER':"
+        passwd "$APP_USER"
     fi
 fi
 echo ""
 
 # Step 8b: Create webhook user (for CI/CD)
 print_info "Step 8b: Setting up webhook user for deployments..."
-if id "webhook" &>/dev/null; then
-    print_success "User 'webhook' already exists"
+if id "$WEBHOOK_USER" &>/dev/null; then
+    print_success "User '$WEBHOOK_USER' already exists"
 else
-    read -p "Create user 'webhook' for automated deployments? (y/n): " -r
+    read -p "Create user '$WEBHOOK_USER' for automated deployments? (y/n): " -r
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        adduser --disabled-password --gecos "" webhook
-        print_success "User 'webhook' created"
+        adduser --disabled-password --gecos "" "$WEBHOOK_USER"
+        print_success "User '$WEBHOOK_USER' created"
 
-        # Add webhook user to chopchop group for file access
-        usermod -aG chopchop webhook
+        # Add webhook user to app group for file access
+        usermod -aG "$APP_USER" "$WEBHOOK_USER"
 
         # Give webhook user sudo permission for specific deployment commands
-        echo "webhook ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart chopchop" >> /etc/sudoers.d/webhook
-        echo "webhook ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop chopchop" >> /etc/sudoers.d/webhook
-        echo "webhook ALL=(ALL) NOPASSWD: /usr/bin/systemctl start chopchop" >> /etc/sudoers.d/webhook
-        echo "webhook ALL=(ALL) NOPASSWD: /usr/bin/systemctl status chopchop" >> /etc/sudoers.d/webhook
-        chmod 0440 /etc/sudoers.d/webhook
+        echo "$WEBHOOK_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart $APP_NAME" >> /etc/sudoers.d/"$WEBHOOK_USER"
+        echo "$WEBHOOK_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop $APP_NAME" >> /etc/sudoers.d/"$WEBHOOK_USER"
+        echo "$WEBHOOK_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl start $APP_NAME" >> /etc/sudoers.d/"$WEBHOOK_USER"
+        echo "$WEBHOOK_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl status $APP_NAME" >> /etc/sudoers.d/"$WEBHOOK_USER"
+        chmod 0440 /etc/sudoers.d/"$WEBHOOK_USER"
         print_success "Webhook user configured with limited sudo permissions"
     fi
 fi
@@ -171,11 +175,11 @@ echo ""
 print_info "Step 9: Setting up database..."
 echo ""
 print_info "Please enter database details:"
-read -p "Database name [restaurant_db]: " DB_NAME
-DB_NAME=${DB_NAME:-restaurant_db}
+read -p "Database name [$DEFAULT_DB_NAME]: " DB_NAME
+DB_NAME=${DB_NAME:-$DEFAULT_DB_NAME}
 
-read -p "Database user [chopchop_user]: " DB_USER
-DB_USER=${DB_USER:-chopchop_user}
+read -p "Database user [$DEFAULT_DB_USER]: " DB_USER
+DB_USER=${DB_USER:-$DEFAULT_DB_USER}
 
 read -sp "Database password: " DB_PASSWORD
 echo ""
@@ -187,7 +191,7 @@ fi
 
 # Create database and user
 print_info "Creating database and user..."
-mysql -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" 2>/dev/null || true
+mysql -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME} CHARACTER SET ${DB_CHARSET} COLLATE ${DB_COLLATION};" 2>/dev/null || true
 mysql -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASSWORD}';" 2>/dev/null || true
 mysql -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';" 2>/dev/null || true
 mysql -e "FLUSH PRIVILEGES;" 2>/dev/null || true
@@ -196,16 +200,16 @@ echo ""
 
 # Step 10: Create application directory
 print_info "Step 10: Setting up application directory..."
-mkdir -p /opt/Menu-Ordering
-chown -R chopchop:chopchop /opt/Menu-Ordering
-print_success "Directory /opt/Menu-Ordering created"
+mkdir -p "$APP_DIR"
+chown -R "$APP_USER:$APP_USER" "$APP_DIR"
+print_success "Directory $APP_DIR created"
 echo ""
 
 # Step 11: Create .env template
 print_info "Step 11: Creating .env configuration..."
-cat > /opt/Menu-Ordering/.env << EOF
+cat > "$ENV_FILE" << EOF
 # Database Configuration
-DB_URL=jdbc:mysql://localhost:3306/${DB_NAME}?useSSL=false&serverTimezone=Asia/Jakarta&allowPublicKeyRetrieval=true
+DB_URL=jdbc:mysql://localhost:3306/${DB_NAME}?useSSL=false&serverTimezone=${SERVER_TIMEZONE}&allowPublicKeyRetrieval=true
 DB_USERNAME=${DB_USER}
 DB_PASSWORD=${DB_PASSWORD}
 
@@ -225,11 +229,11 @@ SPRING_FLYWAY_ENABLED=true
 SPRING_FLYWAY_BASELINE_ON_MIGRATE=true
 
 # Server Configuration
-SERVER_PORT=8080
+SERVER_PORT=${SERVER_PORT}
 EOF
 
-chmod 600 /opt/Menu-Ordering/.env
-chown chopchop:chopchop /opt/Menu-Ordering/.env
+chmod 600 "$ENV_FILE"
+chown "$APP_USER:$APP_USER" "$ENV_FILE"
 print_success ".env file created"
 echo ""
 
@@ -244,26 +248,25 @@ print_success "VPS Setup Complete!"
 print_success "=========================================="
 echo ""
 print_info "Next steps:"
-echo "1. Clone or upload your application to /opt/Menu-Ordering"
-echo "2. Build the application: cd /opt/Menu-Ordering && mvn clean package -DskipTests"
-echo "3. Create systemd service (see HOSTINGER_DEPLOYMENT.md)"
-echo "4. Start the application: sudo systemctl start chopchop"
+echo "1. Clone or upload your application to $APP_DIR"
+echo "2. Build the application: cd $APP_DIR && mvn clean package -DskipTests"
+echo "3. Create systemd service: sudo bash scripts/create_service.sh"
+echo "4. Start the application: sudo systemctl start $APP_NAME"
 echo ""
 print_info "Database Information:"
 echo "  - Database: ${DB_NAME}"
 echo "  - User: ${DB_USER}"
-echo "  - Password: [saved in /opt/Menu-Ordering/.env]"
+echo "  - Password: [saved in $ENV_FILE]"
 echo ""
 print_info "Access your application:"
-echo "  - Customer: http://YOUR_VPS_IP:8080/"
-echo "  - Cashier: http://YOUR_VPS_IP:8080/cashier/login"
+echo "  - URL: http://YOUR_VPS_IP:${SERVER_PORT}/"
 echo ""
 print_info "Users created:"
-echo "  - chopchop: Application owner (can SSH and manage app)"
-echo "  - webhook: CI/CD automation (limited permissions)"
+echo "  - $APP_USER: Application owner (can SSH and manage app)"
+echo "  - $WEBHOOK_USER: CI/CD automation (limited permissions)"
 echo ""
 print_info "Optional: Setup GitHub webhook for auto-deployment"
 echo "  - See scripts/SCRIPTS.md 'Webhook Setup' section"
 echo ""
-print_info "To view this again, check: /opt/Menu-Ordering/.env"
+print_info "To view this again, check: $ENV_FILE"
 echo ""

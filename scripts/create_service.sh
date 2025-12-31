@@ -1,9 +1,24 @@
 #!/bin/bash
 
-# ChopChop Restaurant - Create Systemd Service
+# Create Systemd Service
 # Usage: sudo bash create_service.sh
 
 set -e
+
+# Load configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/config.sh" ]; then
+    source "$SCRIPT_DIR/config.sh"
+else
+    echo "ERROR: config.sh not found!"
+    exit 1
+fi
+
+# Validate configuration
+if ! validate_config; then
+    echo "Please check your config.sh file."
+    exit 1
+fi
 
 # Colors
 RED='\033[0;31m'
@@ -21,25 +36,25 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-print_info "Creating ChopChop systemd service..."
+print_info "Creating ${APP_DISPLAY_NAME} systemd service..."
 
 # Create service file
-cat > /etc/systemd/system/chopchop.service << 'EOF'
+cat > /etc/systemd/system/${SERVICE_FILE} << EOF
 [Unit]
-Description=ChopChop Restaurant Application
+Description=${SERVICE_DESCRIPTION}
 After=syslog.target network.target mysql.service
 
 [Service]
-User=chopchop
-Group=chopchop
-WorkingDirectory=/opt/Menu-Ordering
+User=${APP_USER}
+Group=${APP_USER}
+WorkingDirectory=${APP_DIR}
 
 # Load environment variables from .env
-EnvironmentFile=/opt/Menu-Ordering/.env
+EnvironmentFile=${ENV_FILE}
 
 # Java execution with memory settings
 # Adjust -Xmx based on your VPS RAM (2g for 4GB VPS, 1g for 2GB VPS)
-ExecStart=/usr/bin/java -Xms512m -Xmx2g -jar /opt/Menu-Ordering/target/menu-ordering-app-0.0.1-SNAPSHOT.jar
+ExecStart=/usr/bin/java -Xms${JVM_XMS} -Xmx${JVM_XMX} -jar ${JAR_PATH}
 
 # Restart policy
 Restart=always
@@ -49,30 +64,30 @@ SuccessExitStatus=143
 # Logging
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=chopchop
+SyslogIdentifier=${APP_NAME}
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-print_success "Service file created at /etc/systemd/system/chopchop.service"
+print_success "Service file created at /etc/systemd/system/${SERVICE_FILE}"
 
 # Reload systemd
 systemctl daemon-reload
 print_success "Systemd reloaded"
 
 # Enable service
-systemctl enable chopchop
+systemctl enable "$APP_NAME"
 print_success "Service enabled (will auto-start on boot)"
 
 print_info "Service created successfully!"
 echo ""
 print_info "Available commands:"
-echo "  sudo systemctl start chopchop    - Start the application"
-echo "  sudo systemctl stop chopchop     - Stop the application"
-echo "  sudo systemctl restart chopchop  - Restart the application"
-echo "  sudo systemctl status chopchop   - Check status"
-echo "  sudo journalctl -u chopchop -f   - View logs (real-time)"
+echo "  sudo systemctl start $APP_NAME    - Start the application"
+echo "  sudo systemctl stop $APP_NAME     - Stop the application"
+echo "  sudo systemctl restart $APP_NAME  - Restart the application"
+echo "  sudo systemctl status $APP_NAME   - Check status"
+echo "  sudo journalctl -u $APP_NAME -f   - View logs (real-time)"
 echo ""
 print_info "To start the application now, run:"
-echo "  sudo systemctl start chopchop"
+echo "  sudo systemctl start $APP_NAME"

@@ -1,8 +1,8 @@
-# ChopChop Restaurant - Menu Ordering Application
+# Restaurant Menu Ordering Application
 
-A restaurant ordering system built with Spring Boot, featuring real-time order management, cashier dashboard, and customer self-service ordering.
+A complete restaurant ordering system built with Spring Boot, featuring real-time order management, cashier dashboard, and customer self-service ordering.
 
-## Features
+## ✨ Features
 
 ### Customer Features
 - Browse menu by categories
@@ -27,107 +27,143 @@ A restaurant ordering system built with Spring Boot, featuring real-time order m
 - Comprehensive audit logging for menu changes
 - RESTful API architecture
 
-## Tech Stack
+## 🛠 Tech Stack
 
-**Backend:** Spring Boot 3.5.6, Java 21, Spring Security, MySQL 8.0, Hibernate, Flyway
-
-**Frontend:** Thymeleaf, JavaScript, CSS3, STOMP.js
-
+**Backend:** Spring Boot 3.5.6, Java 21, Spring Security, MySQL 8.0, Hibernate, Flyway  
+**Frontend:** Thymeleaf, JavaScript, CSS3, STOMP.js  
 **Tools:** Maven, ZXing (QR codes), BCrypt
 
-## Quick Start
+## 📋 Prerequisites
 
-### Prerequisites
 - Java 21+
 - MySQL 8.0+
 - Maven 3.6+
 
-### Installation
+## 🚀 Quick Start
 
-1. **Create database**
+Choose your setup type:
+
+### Option 1: Local Development
+
+Perfect for development, testing, and making changes to the code.
+
+1. **Clone and navigate**
+   ```bash
+   git clone <your-repo-url>
+   cd Menu-Ordering
+   ```
+
+2. **Create database**
    ```bash
    mysql -u root -p -e "CREATE DATABASE restaurant_db;"
    ```
 
-2. **Configure database**
-
-   For local development, you can edit `src/main/resources/application.properties`:
+3. **Configure database**
+   
+   Edit `src/main/resources/application.properties`:
    ```properties
    spring.datasource.password=your_mysql_password
    spring.flyway.enabled=true
    ```
+   
+   > **Important:** Set `spring.flyway.enabled=true` for the **first run** to create tables and insert sample data. After the first successful run, you can set it to `false` if you don't want migrations to run on every startup.
 
-   Or use environment variables (recommended):
-   ```bash
-   export DB_PASSWORD=your_mysql_password
-   export HIBERNATE_DDL_AUTO=update
-   export THYMELEAF_CACHE=false
-   ```
-
-3. **Run application**
+4. **Run application**
    ```bash
    mvn spring-boot:run
    ```
 
-4. **Access**
+5. **Access application**
    - Customer: http://localhost:8080
    - Cashier: http://localhost:8080/cashier/login
 
-See [INSTALLATION.md](docs/INSTALLATION.md) for detailed setup instructions.
+See [docs/INSTALLATION.md](docs/INSTALLATION.md) for detailed local setup.
 
-## Default Credentials
+### Option 2: VPS Deployment
 
-| Username | Password     | Role    |
-|----------|--------------|---------|
-| admin    | password123  | ADMIN   |
-| kasir1   | password123  | CASHIER |
-| kasir2   | password123  | CASHIER |
+Perfect for production deployment on any VPS provider (DigitalOcean, AWS, Linode, Hostinger, etc.).
 
-**Warning:** Change these passwords in production.
+1. **Configure deployment scripts**
+   
+   Edit `scripts/config.sh` to customize for your application:
+   ```bash
+   nano scripts/config.sh
+   ```
+   
+   Update at minimum:
+   - `APP_NAME` - Your service name
+   - `APP_USER` - System user to run the app
+   - `APP_DIR` - Installation directory
+   - `JAR_NAME` - Your JAR filename
+   - Database settings, ports, etc.
 
-## Project Structure
+2. **Upload and run setup script**
+   ```bash
+   scp scripts/setup_vps.sh scripts/config.sh root@YOUR_VPS_IP:/root/
+   ssh root@YOUR_VPS_IP
+   sudo bash setup_vps.sh
+   ```
+
+3. **Follow the prompts**
+   
+   The script will:
+   - Install Java, MySQL, Maven, Git, Nginx
+   - Create users and directories
+   - Configure firewall
+   - Set up database
+
+4. **Deploy your application**
+   ```bash
+   cd /opt/<YOUR_APP_DIR>
+   git clone <your-repo-url> .
+   bash scripts/deploy.sh
+   ```
+
+See [scripts/SCRIPTS.md](scripts/SCRIPTS.md) for complete VPS deployment guide.
+
+## 🔑 Default Credentials
+
+> **⚠️ Security Warning:** Change these passwords immediately in production!
+
+## 📁 Project Structure
 
 ```
-menu-ordering-app/
+Menu-Ordering/
+├── scripts/                   # VPS deployment scripts
+│   ├── config.sh             # Configuration (edit this first!)
+│   ├── setup_vps.sh          # Initial VPS setup
+│   ├── deploy.sh             # Deploy/update app
+│   ├── create_service.sh     # Create systemd service
+│   ├── backup_database.sh    # Database backup
+│   ├── reset_database.sh     # Reset database
+│   └── SCRIPTS.md            # Deployment documentation
 ├── src/main/
 │   ├── java/menuorderingapp/project/
-│   │   ├── config/              # Spring configuration
-│   │   ├── controller/          # REST controllers
-│   │   ├── model/              # Entity models & DTOs
-│   │   ├── repository/         # JPA repositories
-│   │   ├── security/           # Security components
-│   │   ├── service/            # Business logic
-│   │   └── util/               # Utility classes
+│   │   ├── config/           # Spring configuration
+│   │   ├── controller/       # REST controllers
+│   │   ├── model/           # Entity models & DTOs
+│   │   ├── repository/      # JPA repositories
+│   │   ├── security/        # Security components
+│   │   ├── service/         # Business logic
+│   │   └── util/            # Utility classes
 │   └── resources/
-│       ├── db/migration/       # Flyway SQL migrations
-│       ├── static/             # CSS, JS, images
-│       └── templates/          # Thymeleaf templates
-├── docs/                       # Documentation
-└── pom.xml                    # Maven configuration
+│       ├── db/migration/    # Flyway SQL migrations
+│       ├── static/          # CSS, JS, images
+│       ├── templates/       # Thymeleaf templates
+│       └── application.properties
+├── docs/                    # Documentation
+│   ├── INSTALLATION.md      # Detailed setup guide
+│   └── API.md              # API reference
+└── pom.xml                 # Maven configuration
 ```
 
-## Documentation
+## 📖 Documentation
 
-- [INSTALLATION.md](docs/INSTALLATION.md) - Detailed installation guide
-- [API.md](docs/API.md) - REST API reference
+- **[INSTALLATION.md](docs/INSTALLATION.md)** - Detailed local installation guide
+- **[scripts/SCRIPTS.md](scripts/SCRIPTS.md)** - VPS deployment guide
+- **[API.md](docs/API.md)** - REST API reference
 
-## Key Endpoints
-
-### Customer
-- `GET /` - Menu page
-- `GET /cart` - Shopping cart
-- `POST /api/cart/add` - Add to cart
-- `POST /api/orders` - Create order
-
-### Cashier
-- `GET /cashier/dashboard` - Dashboard
-- `GET /cashier/orders` - Order management
-- `GET /cashier/reports` - Sales reports
-- `POST /api/auth/login` - Login
-
-See [docs/API.md](docs/API.md) for complete API documentation.
-
-## Security
+## 🔒 Security Features
 
 - BCrypt password hashing (strength: 10)
 - Session-based authentication (8-hour timeout)
@@ -136,20 +172,20 @@ See [docs/API.md](docs/API.md) for complete API documentation.
 - SQL injection prevention via JPA
 - XSS protection via Thymeleaf
 - Secure cookies (HttpOnly, Secure, SameSite)
-- HTTPS/TLS support
-- Security headers (HSTS, CSP, X-Frame-Options)
 - Environment-based configuration for sensitive data
 
-## Troubleshooting
+## 🐛 Troubleshooting
 
-**Port 8080 in use:**
+**Port already in use:**
 ```bash
 lsof -ti:8080 | xargs kill -9
+# Or change port in application.properties:
+# server.port=9090
 ```
 
 **Database connection error:**
-- Check MySQL is running
-- Verify credentials in `application.properties`
+- Verify MySQL is running: `systemctl status mysql`
+- Check credentials in `application.properties`
 
 **Flyway migration error:**
 ```bash
@@ -157,24 +193,26 @@ mysql -u root -p -e "DROP DATABASE restaurant_db; CREATE DATABASE restaurant_db;
 mvn spring-boot:run
 ```
 
-## Development
+See [docs/INSTALLATION.md](docs/INSTALLATION.md) for more troubleshooting.
 
-### Generate Password Hashes
+## 🛠 Development
+
+**Generate password hashes:**
 ```bash
 mvn exec:java -Dexec.mainClass="menuorderingapp.project.util.dev.PasswordHashGenerator"
 ```
 
-### Build JAR
+**Build production JAR:**
 ```bash
 mvn clean package
 java -jar target/menu-ordering-app-0.0.1-SNAPSHOT.jar
 ```
 
-## License
+## 📄 License
 
 [LICENSE](LICENSE)
 
-## Authors
+## 👥 Authors
 
 Team Hola Holo Don't Even Know What We're Doing
 - [Gendhi Ramona P](https://github.com/XDX1O1)

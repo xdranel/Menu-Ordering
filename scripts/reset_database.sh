@@ -1,10 +1,19 @@
 #!/bin/bash
 
-# ChopChop Restaurant - Database Reset Script
-# PERINGATAN: Script ini akan MENGHAPUS SEMUA DATA di database!
+# Database Reset Script
+# WARNING: This script will DELETE ALL DATA!
 # Usage: bash reset_database.sh
 
 set -e
+
+# Load configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/config.sh" ]; then
+    source "$SCRIPT_DIR/config.sh"
+else
+    echo "ERROR: config.sh not found!"
+    exit 1
+fi
 
 # Colors
 RED='\033[0;31m'
@@ -18,13 +27,13 @@ print_warning() { echo -e "${YELLOW}⚠ $1${NC}"; }
 print_info() { echo -e "${YELLOW}→ $1${NC}"; }
 
 # Load environment variables
-if [ -f "/opt/Menu-Ordering/.env" ]; then
-    source /opt/Menu-Ordering/.env
+if [ -f "$ENV_FILE" ]; then
+    source "$ENV_FILE"
 elif [ -f ".env" ]; then
     source .env
 else
     print_error ".env file not found!"
-    print_info "Run this script from /opt/Menu-Ordering directory"
+    print_info "Run this script from $APP_DIR directory"
     exit 1
 fi
 
@@ -66,8 +75,7 @@ echo ""
 
 # Step 1: Create backup first (safety)
 print_info "[1/5] Creating backup before reset..."
-BACKUP_DIR="/opt/Menu-Ordering/backups"
-mkdir -p $BACKUP_DIR 2>/dev/null || mkdir -p backups
+mkdir -p "$BACKUP_DIR" 2>/dev/null || mkdir -p backups
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="$BACKUP_DIR/backup_before_reset_${TIMESTAMP}.sql"
@@ -84,8 +92,8 @@ echo ""
 
 # Step 2: Stop application (to release DB connections)
 print_info "[2/5] Stopping application..."
-if systemctl is-active --quiet chopchop 2>/dev/null; then
-    sudo systemctl stop chopchop
+if systemctl is-active --quiet "$APP_NAME" 2>/dev/null; then
+    sudo systemctl stop "$APP_NAME"
     print_success "Application stopped"
 else
     print_info "Application not running (or not in VPS)"
@@ -101,8 +109,8 @@ print_success "Database dropped"
 echo ""
 
 print_info "[4/5] Creating fresh database..."
-mysql -u $DB_USERNAME -p$DB_PASSWORD -e "CREATE DATABASE $DB_NAME CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" 2>/dev/null || \
-mysql -u root -p -e "CREATE DATABASE $DB_NAME CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USERNAME'@'localhost'; FLUSH PRIVILEGES;"
+mysql -u $DB_USERNAME -p$DB_PASSWORD -e "CREATE DATABASE $DB_NAME CHARACTER SET ${DB_CHARSET} COLLATE ${DB_COLLATION};" 2>/dev/null || \
+mysql -u root -p -e "CREATE DATABASE $DB_NAME CHARACTER SET ${DB_CHARSET} COLLATE ${DB_COLLATION}; GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USERNAME'@'localhost'; FLUSH PRIVILEGES;"
 
 print_success "Fresh database created: $DB_NAME"
 echo ""
@@ -112,22 +120,22 @@ print_info "[5/5] Restarting application..."
 print_info "Flyway migrations will run automatically to create tables and insert default data..."
 echo ""
 
-if systemctl is-active --quiet chopchop 2>/dev/null; then
-    sudo systemctl start chopchop
+if systemctl is-active --quiet "$APP_NAME" 2>/dev/null; then
+    sudo systemctl start "$APP_NAME"
     sleep 5
 
-    if systemctl is-active --quiet chopchop; then
+    if systemctl is-active --quiet "$APP_NAME"; then
         print_success "Application restarted"
     else
         print_error "Application failed to start!"
-        print_info "Check logs: sudo journalctl -u chopchop -n 100"
+        print_info "Check logs: sudo journalctl -u $APP_NAME -n 100"
         exit 1
     fi
 else
     print_info "Not in VPS environment. Start application manually:"
     print_info "  mvn spring-boot:run"
     print_info "  OR"
-    print_info "  java -jar target/menu-ordering-app-0.0.1-SNAPSHOT.jar"
+    print_info "  java -jar $JAR_PATH"
 fi
 
 echo ""
