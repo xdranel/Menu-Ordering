@@ -422,7 +422,7 @@ systemctl status webhook-listener
 ufw status | grep 9000
 
 # Test endpoint manually
-curl -X POST http://YOUR_VPS_IP:9000/hooks/chopchop-deploy
+curl -X POST http://YOUR_VPS_IP:9000/hooks/app-deploy
 ```
 
 **Permission errors:**
@@ -498,7 +498,7 @@ ln -s /etc/nginx/sites-available/webhook /etc/nginx/sites-enabled/
 nginx -t
 systemctl reload nginx
 
-# Then use: http://YOUR_DOMAIN/hooks/chopchop-deploy in GitHub
+# Then use: http://YOUR_DOMAIN/hooks/app-deploy in GitHub
 ```
 
 ## Quick Start Guide
