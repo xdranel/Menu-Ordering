@@ -58,5 +58,6 @@ Thumbs.db
 *.tmp
 temp/
 
-### MD for my ownself ###
+### for my ownself ###
 docs/forme/
+scripts
