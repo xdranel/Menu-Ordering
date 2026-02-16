@@ -41,15 +41,9 @@ A complete restaurant ordering system built with Spring Boot, featuring real-tim
 
 ## Quick Start
 
-Choose your setup type:
-
-### Option 1: Local Development
-
-Perfect for development, testing, and making changes to the code.
-
 1. **Clone and navigate**
    ```bash
-   git clone https://github.com/XDX1O1/Menu-Ordering
+   git clone https://github.com/xdranel/Menu-Ordering
    cd Menu-Ordering
    ```
 
@@ -79,60 +73,10 @@ Perfect for development, testing, and making changes to the code.
 
 See [docs/INSTALLATION.md](docs/INSTALLATION.md) for detailed local setup.
 
-### Option 2: VPS Deployment
-
-Perfect for production deployment on any VPS provider (DigitalOcean, AWS, Linode, Hostinger, etc.).
-
-1. **Configure deployment scripts**
-
-   Edit `scripts/config.sh` to customize for your application:
-   ```bash
-   nano scripts/config.sh
-   ```
-
-   Update at minimum:
-    - `APP_NAME` - Your service name
-    - `APP_USER` - System user to run the app
-    - `APP_DIR` - Installation directory
-    - `JAR_NAME` - Your JAR filename
-    - Database settings, ports, etc.
-
-2. **Upload and run setup script**
-   ```bash
-   scp scripts/setup_vps.sh scripts/config.sh root@YOUR_VPS_IP:/root/
-   ssh root@YOUR_VPS_IP
-   sudo bash setup_vps.sh
-   ```
-
-3. **Follow the prompts**
-
-   The script will:
-    - Install Java, MySQL, Maven, Git, Nginx
-    - Create users and directories
-    - Configure firewall
-    - Set up database
-
-4. **Deploy your application**
-   ```bash
-   cd /opt/<YOUR_APP_DIR>
-   git clone <your-repo-url> .
-   bash scripts/deploy.sh
-   ```
-
-See [scripts/SCRIPTS.md](scripts/SCRIPTS.md) for complete VPS deployment guide.
-
 ## Project Structure
 
 ```
 Menu-Ordering/
-├── scripts/                  # VPS deployment scripts
-│   ├── config.sh             # Configuration (edit this first!)
-│   ├── setup_vps.sh          # Initial VPS setup
-│   ├── deploy.sh             # Deploy/update app
-│   ├── create_service.sh     # Create systemd service
-│   ├── backup_database.sh    # Database backup
-│   ├── reset_database.sh     # Reset database
-│   └── SCRIPTS.md            # Deployment documentation
 ├── src/main/
 │   ├── java/menuorderingapp/project/
 │   │   ├── config/           # Spring configuration
@@ -156,7 +100,6 @@ Menu-Ordering/
 ## Documentation
 
 - **[INSTALLATION.md](docs/INSTALLATION.md)** - Detailed installation guide
-- **[scripts/SCRIPTS.md](scripts/SCRIPTS.md)** - VPS deployment guide
 - **[API.md](docs/API.md)** - REST API reference
 
 ## Security Features
