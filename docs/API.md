@@ -664,4 +664,4 @@ stompClient.connect({}, function(frame) {
 stompClient.send("/app/ping", {}, "test message");
 ```
 
-**Last Updated:** 2025-01-01
+**Last Updated:** 31-12-2025
