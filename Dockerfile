@@ -1,26 +1,17 @@
-# Use Maven with JDK 21 for building
-FROM maven:3.9.5-eclipse-temurin-21 AS build
-
+# Stage 1: Build (This happens on the laptop)
+FROM maven:3.8.4-openjdk-17-slim AS build
+COPY . /app
 WORKDIR /app
-
-# Copy pom.xml and download dependencies
-COPY pom.xml .
-RUN mvn dependency:go-offline -B
-
-# Copy source code and build
-COPY src ./src
+# skipTests is vital to save RAM and time during deployment
 RUN mvn clean package -DskipTests
 
-# Use JRE 21 for runtime
-FROM eclipse-temurin:21-jre-alpine
-
+# Stage 2: Runtime (This is the light version that actually runs)
+FROM openjdk:17-jdk-slim
 WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
 
-# Copy jar from build stage
-COPY --from=build /app/target/menu-ordering-app-0.0.1-SNAPSHOT.jar app.jar
+# Limit Java's "hunger" for RAM
+ENV JAVA_OPTS="-Xmx512M -Xms256M"
 
-# Expose port
 EXPOSE 8080
-
-# Run the application
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
