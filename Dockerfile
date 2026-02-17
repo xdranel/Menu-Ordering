@@ -1,16 +1,13 @@
-# Stage 1: Build (This happens on the laptop)
-FROM maven:3.8.4-openjdk-17-slim AS build
+FROM maven:3.9.6-eclipse-temurin-17 AS build
 COPY . /app
 WORKDIR /app
-# skipTests is vital to save RAM and time during deployment
 RUN mvn clean package -DskipTests
 
-# Stage 2: Runtime (This is the light version that actually runs)
-FROM openjdk:17-jdk-slim
+FROM eclipse-temurin:17-jre
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 
-# Limit Java's "hunger" for RAM
+# Memory limits for your 2c/4g hardware
 ENV JAVA_OPTS="-Xmx512M -Xms256M"
 
 EXPOSE 8080
