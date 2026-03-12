@@ -30,6 +30,8 @@ jobs:
       - name: Deploy
         run: |
           docker pull ghcr.io/xdranel/menu-ordering:latest
+          docker stop menu-app || true
+          docker rm menu-app || true
           cd /home/xdranel/projects/menu-ordering
           docker compose up -d --no-build menu-app
             --name menu-app \
