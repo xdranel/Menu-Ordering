@@ -34,13 +34,3 @@ jobs:
           docker rm menu-app || true
           cd /home/xdranel/projects/menu-ordering
           docker compose up -d --no-build menu-app
-            --name menu-app \
-            --restart unless-stopped \
-            --network proxy-net \
-            --memory 768m \
-            --cpus 1.0 \
-            -e DB_URL="jdbc:mysql://menu-db:3306/restaurant_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true" \
-            -e SPRING_DATASOURCE_USERNAME=menuuser \
-            -e SPRING_DATASOURCE_PASSWORD=${{ secrets.DB_PASSWORD }} \
-            -e SPRING_FLYWAY_ENABLED=true \
-            ghcr.io/xdranel/menu-ordering:latest
