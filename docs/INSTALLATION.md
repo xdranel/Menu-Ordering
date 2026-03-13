@@ -4,7 +4,7 @@ Complete setup guide for installing and running the Restaurant Menu Ordering App
 
 ---
 
-## 🖥️ Local Development Setup
+## Local Development Setup
 
 Perfect for development, testing, and making changes to the code.
 
