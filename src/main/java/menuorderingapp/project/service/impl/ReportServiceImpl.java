@@ -5,6 +5,7 @@ import menuorderingapp.project.repository.InvoiceRepository;
 import menuorderingapp.project.repository.OrderItemRepository;
 import menuorderingapp.project.repository.OrderRepository;
 import menuorderingapp.project.service.ReportService;
+import menuorderingapp.project.util.Constants;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,7 +36,7 @@ public class ReportServiceImpl implements ReportService {
         List<Order> orders = orderRepository.findPaidOrdersBetween(startDate, endDate);
 
         double totalRevenue = orders.stream()
-                .mapToDouble(order -> order.getTotal().doubleValue())
+                .mapToDouble(order -> order.getTotal().doubleValue() * (1 + Constants.TAX_RATE))
                 .sum();
 
         long totalOrders = orders.size();
@@ -44,7 +45,7 @@ public class ReportServiceImpl implements ReportService {
         Map<Order.PaymentMethod, Double> revenueByPaymentMethod = orders.stream()
                 .collect(Collectors.groupingBy(
                         Order::getPaymentMethod,
-                        Collectors.summingDouble(order -> order.getTotal().doubleValue())
+                        Collectors.summingDouble(order -> order.getTotal().doubleValue() * (1 + Constants.TAX_RATE))
                 ));
 
         Map<String, Object> report = new HashMap<>();
@@ -74,7 +75,7 @@ public class ReportServiceImpl implements ReportService {
                 .map(result -> {
                     Menu menu = (Menu) result[0];
                     Long quantity = (Long) result[1];
-                    double revenue = menu.getCurrentPrice().doubleValue() * quantity;
+                    double revenue = ((java.math.BigDecimal) result[2]).doubleValue();
 
                     Map<String, Object> item = new HashMap<>();
                     item.put("menu", menu);
@@ -97,7 +98,7 @@ public class ReportServiceImpl implements ReportService {
                 .collect(Collectors.toMap(
                         Map.Entry::getKey,
                         entry -> entry.getValue().stream()
-                                .mapToDouble(order -> order.getTotal().doubleValue())
+                                .mapToDouble(order -> order.getTotal().doubleValue() * (1 + Constants.TAX_RATE))
                                 .sum()
                 ));
 

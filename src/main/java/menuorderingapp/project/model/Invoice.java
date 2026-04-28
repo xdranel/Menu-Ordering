@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "invoices")
@@ -47,7 +48,7 @@ public class Invoice {
         }
 
         if (invoiceNumber == null) {
-            invoiceNumber = "INV-" + System.currentTimeMillis();
+            invoiceNumber = "INV-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
         }
 
         if (finalAmount == null) {

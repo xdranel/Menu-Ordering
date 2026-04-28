@@ -1,12 +1,12 @@
 package menuorderingapp.project.service.impl;
 
 import menuorderingapp.project.model.Cashier;
-import menuorderingapp.project.model.CashierSession;
 import menuorderingapp.project.repository.CashierRepository;
 import menuorderingapp.project.repository.CashierSessionRepository;
 import menuorderingapp.project.security.CashierUserDetails;
 import menuorderingapp.project.service.AuthService;
 import menuorderingapp.project.service.CashierService;
+import menuorderingapp.project.util.JwtUtil;
 
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -16,8 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
-import java.util.UUID;
 
 @Service
 @Transactional
@@ -27,15 +25,18 @@ public class AuthServiceImpl implements AuthService {
     private final CashierRepository cashierRepository;
     private final CashierSessionRepository sessionRepository;
     private final AuthenticationManager authenticationManager;
+    private final JwtUtil jwtUtil;
 
     public AuthServiceImpl(CashierService cashierService,
             CashierRepository cashierRepository,
             CashierSessionRepository sessionRepository,
-            AuthenticationManager authenticationManager) {
+            AuthenticationManager authenticationManager,
+            JwtUtil jwtUtil) {
         this.cashierService = cashierService;
         this.cashierRepository = cashierRepository;
         this.sessionRepository = sessionRepository;
         this.authenticationManager = authenticationManager;
+        this.jwtUtil = jwtUtil;
     }
 
     @Override
@@ -51,13 +52,7 @@ public class AuthServiceImpl implements AuthService {
 
             cashierService.updateLastLogin(cashier.getId());
 
-            String sessionToken = generateSessionToken();
-            LocalDateTime expiresAt = LocalDateTime.now().plusHours(8);
-
-            CashierSession session = new CashierSession(cashier, sessionToken, expiresAt);
-            sessionRepository.save(session);
-
-            return sessionToken;
+            return jwtUtil.generateToken(cashier);
 
         } catch (Exception e) {
             throw new RuntimeException("Invalid username or password");
@@ -65,47 +60,30 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void logout(String sessionToken) {
+    public void logout(String token) {
         SecurityContextHolder.clearContext();
-
-        Optional<CashierSession> sessionOpt = sessionRepository.findBySessionToken(sessionToken);
-        sessionOpt.ifPresent(sessionRepository::delete);
+        // JWT is stateless — client discards the token; nothing to invalidate server-side
     }
 
     @Override
     @Transactional(readOnly = true)
-    public boolean validateSession(String sessionToken) {
-        Optional<CashierSession> sessionOpt = sessionRepository.findBySessionToken(sessionToken);
-        if (sessionOpt.isEmpty()) {
-            return false;
-        }
-
-        CashierSession session = sessionOpt.get();
-        if (session.isExpired()) {
-            sessionRepository.delete(session);
-            return false;
-        }
-
-        return true;
+    public boolean validateSession(String token) {
+        return jwtUtil.validateToken(token);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Cashier getCashierFromSession(String sessionToken) {
-        Optional<CashierSession> sessionOpt = sessionRepository.findBySessionToken(sessionToken);
-        if (sessionOpt.isEmpty() || sessionOpt.get().isExpired()) {
-            throw new RuntimeException("Invalid or expired session");
+    public Cashier getCashierFromSession(String token) {
+        if (!jwtUtil.validateToken(token)) {
+            throw new RuntimeException("Invalid or expired token");
         }
-
-        return sessionOpt.get().getCashier();
+        String username = jwtUtil.extractUsername(token);
+        return cashierRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Cashier not found"));
     }
 
     @Override
     public void cleanupExpiredSessions() {
         sessionRepository.deleteExpiredSessions(LocalDateTime.now());
-    }
-
-    private String generateSessionToken() {
-        return UUID.randomUUID().toString();
     }
 }

@@ -21,7 +21,7 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
     @Query("SELECT oi FROM OrderItem oi JOIN FETCH oi.menu WHERE oi.order = :order")
     List<OrderItem> findByOrderWithMenu(@Param("order") Order order);
 
-    @Query("SELECT oi.menu, SUM(oi.quantity) as totalQuantity " +
+    @Query("SELECT oi.menu, SUM(oi.quantity) as totalQuantity, SUM(oi.price * oi.quantity) as totalRevenue " +
             "FROM OrderItem oi " +
             "JOIN oi.order o " +
             "WHERE o.paymentStatus = 'PAID' AND o.createdAt BETWEEN :start AND :end " +

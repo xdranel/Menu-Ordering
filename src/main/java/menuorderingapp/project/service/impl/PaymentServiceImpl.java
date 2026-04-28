@@ -8,6 +8,7 @@ import com.google.zxing.qrcode.QRCodeWriter;
 import menuorderingapp.project.model.Order;
 import menuorderingapp.project.repository.OrderRepository;
 import menuorderingapp.project.service.PaymentService;
+import menuorderingapp.project.util.Constants;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
@@ -43,12 +44,23 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public boolean processQRPayment(String orderNumber, String qrData) {
+        if (qrData == null || qrData.isBlank()) {
+            return false;
+        }
+
         Optional<Order> orderOpt = orderRepository.findByOrderNumber(orderNumber);
         if (orderOpt.isEmpty()) {
             return false;
         }
 
         Order order = orderOpt.get();
+
+        if (order.getPaymentStatus() == Order.PaymentStatus.PAID) {
+            return false;
+        }
+        if (order.getStatus() == Order.OrderStatus.CANCELLED) {
+            return false;
+        }
 
         try {
             Thread.sleep(1000);
@@ -74,12 +86,19 @@ public class PaymentServiceImpl implements PaymentService {
 
         Order order = orderOpt.get();
 
-        // Calculate final amount with 10% tax
-        double subtotal = order.getTotal().doubleValue();
-        double tax = subtotal * 0.10;
-        double finalAmount = subtotal + tax;
+        if (order.getPaymentStatus() == Order.PaymentStatus.PAID) {
+            return false;
+        }
+        if (order.getStatus() == Order.OrderStatus.CANCELLED) {
+            return false;
+        }
 
-        if (amountTendered < finalAmount) {
+        double subtotal = order.getTotal().doubleValue();
+        double tax = subtotal * Constants.TAX_RATE;
+        double exactAmount = subtotal + tax;
+        double roundedAmount = Math.ceil(exactAmount / Constants.CASH_ROUNDING_UNIT) * Constants.CASH_ROUNDING_UNIT;
+
+        if (amountTendered < roundedAmount) {
             return false;
         }
 
@@ -93,15 +112,15 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public String generatePaymentQRCode(Order order) {
-        // Calculate final amount with 10% tax
         double subtotal = order.getTotal().doubleValue();
-        double tax = subtotal * 0.10;
+        double tax = subtotal * Constants.TAX_RATE;
         double finalAmount = subtotal + tax;
 
         String paymentData = String.format(
-                "order_number=%s&amount=%.2f&merchant=ChopChopRestaurant",
+                "order_number=%s&amount=%.2f&merchant=%s",
                 order.getOrderNumber(),
-                finalAmount
+                finalAmount,
+                Constants.APP_NAME.replace(" ", "")
         );
         return generateQRCode(paymentData);
     }

@@ -1,3 +1,6 @@
+const TAX_RATE = 0.10;
+const CASH_ROUNDING_UNIT = 1000;
+
 class CashierApp {
     constructor() {
         this.currentCashier = null;
@@ -86,13 +89,24 @@ class CashierApp {
     togglePaymentSections(paymentMethod) {
         const cashSection = document.getElementById('cashPaymentSection');
         const qrSection = document.getElementById('qrPaymentSection');
+        const totalEl = document.getElementById('paymentTotal');
 
         if (paymentMethod === 'CASH') {
             cashSection.style.display = 'block';
             qrSection.style.display = 'none';
+            if (totalEl) {
+                const rounded = parseFloat(totalEl.dataset.roundedTotal || 0);
+                totalEl.value = `Rp ${rounded.toLocaleString('id-ID')}`;
+                totalEl.dataset.total = rounded;
+            }
         } else if (paymentMethod === 'QR_CODE') {
             cashSection.style.display = 'none';
             qrSection.style.display = 'block';
+            if (totalEl) {
+                const exact = parseFloat(totalEl.dataset.exactTotal || 0);
+                totalEl.value = `Rp ${exact.toLocaleString('id-ID')}`;
+                totalEl.dataset.total = exact;
+            }
         }
     }
 
@@ -231,9 +245,8 @@ class CashierApp {
 
         let html = '';
         orders.forEach(order => {
-            // Calculate final amount with 10% tax
             const subtotal = order.total || 0;
-            const finalAmount = subtotal * 1.10;
+            const finalAmount = subtotal * (1 + TAX_RATE);
 
             html += `
             <tr>
@@ -620,9 +633,8 @@ class CashierApp {
 
         let html = '';
         orders.forEach(order => {
-            // Calculate final amount with 10% tax
             const subtotal = order.total || 0;
-            const finalAmount = subtotal * 1.10;
+            const finalAmount = subtotal * (1 + TAX_RATE);
 
             html += `
                 <tr>
@@ -1118,11 +1130,11 @@ class CashierApp {
                             </tr>
                             <tr class="table-light">
                                 <td colspan="3" class="text-end"><strong>Pajak (10%):</strong></td>
-                                <td class="text-end">Rp ${(order.total * 0.10).toLocaleString('id-ID')}</td>
+                                <td class="text-end">Rp ${(order.total * TAX_RATE).toLocaleString('id-ID')}</td>
                             </tr>
                             <tr class="table-light border-top">
                                 <td colspan="3" class="text-end"><strong>TOTAL:</strong></td>
-                                <td class="text-end"><strong class="text-primary">Rp ${(order.total * 1.10).toLocaleString('id-ID')}</strong></td>
+                                <td class="text-end"><strong class="text-primary">Rp ${(order.total * (1 + TAX_RATE)).toLocaleString('id-ID')}</strong></td>
                             </tr>
                         </tfoot>
                     </table>
@@ -1149,23 +1161,21 @@ class CashierApp {
                 const order = data.data.find(o => o.orderNumber === orderNumber);
 
                 if (order) {
-                    // Calculate tax (10%) and final amount
                     const subtotal = order.total;
-                    const tax = subtotal * 0.10;
-                    const finalAmount = subtotal + tax;
+                    const exactAmount = subtotal * (1 + TAX_RATE);
+                    const roundedAmount = Math.ceil(exactAmount / CASH_ROUNDING_UNIT) * CASH_ROUNDING_UNIT;
 
-                    // Populate modal
+                    const totalEl = document.getElementById('paymentTotal');
+                    totalEl.dataset.exactTotal = exactAmount;
+                    totalEl.dataset.roundedTotal = roundedAmount;
+
                     document.getElementById('paymentOrderNumber').value = order.orderNumber;
-                    document.getElementById('paymentTotal').value = `Rp ${finalAmount.toLocaleString('id-ID')}`;
-                    document.getElementById('paymentTotal').dataset.total = finalAmount;
-
-                    
                     document.getElementById('paymentMethod').value = 'CASH';
                     document.getElementById('cashAmount').value = '';
                     document.getElementById('changeAmount').value = '';
                     document.getElementById('qrTransactionCode').value = '';
 
-                    // Show cash section by default
+                    // Show cash section by default (also sets dataset.total + display)
                     this.togglePaymentSections('CASH');
 
                     // Show modal
@@ -1345,8 +1355,7 @@ class CashierApp {
                 const completedOrders = filteredOrders.filter(o => o.status === 'COMPLETED');
                 const cancelledOrders = filteredOrders.filter(o => o.status === 'CANCELLED');
                 const paidOrders = filteredOrders.filter(o => o.paymentStatus === 'PAID');
-                // Calculate revenue with 10% tax included
-                const totalRevenue = paidOrders.reduce((sum, order) => sum + ((order.total || 0) * 1.10), 0);
+                const totalRevenue = paidOrders.reduce((sum, order) => sum + ((order.total || 0) * (1 + TAX_RATE)), 0);
 
                 // Payment method breakdown
                 const qrPayments = paidOrders.filter(o => o.paymentMethod === 'QR_CODE').length;

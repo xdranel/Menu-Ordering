@@ -7,6 +7,9 @@ import menuorderingapp.project.service.MenuService;
 import menuorderingapp.project.service.OrderService;
 import menuorderingapp.project.service.PaymentService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.http.ResponseEntity;
@@ -20,10 +23,15 @@ import java.util.stream.Collectors;
 @RequestMapping("/customer")
 public class CustomerController extends BaseController {
 
+    private static final Logger log = LoggerFactory.getLogger(CustomerController.class);
+
     private final MenuService menuService;
     private final OrderService orderService;
     private final PaymentService paymentService;
     private final InvoiceService invoiceService;
+
+    @Value("${app.simulate-payment.enabled:true}")
+    private boolean simulatePaymentEnabled;
 
     public CustomerController(MenuService menuService, OrderService orderService, PaymentService paymentService, InvoiceService invoiceService) {
         this.menuService = menuService;
@@ -64,7 +72,6 @@ public class CustomerController extends BaseController {
         return "customer/menu";
     }
 
-
     @GetMapping("/payment")
     public String showPaymentPage(Model model, @RequestParam(required = false) String order) {
         if (order != null) {
@@ -72,7 +79,6 @@ public class CustomerController extends BaseController {
         }
         return "customer/payment";
     }
-
 
     @GetMapping("/api/menus")
     @ResponseBody
@@ -96,7 +102,6 @@ public class CustomerController extends BaseController {
         return success(menuResponses);
     }
 
-
     @PostMapping("/api/orders")
     @ResponseBody
     public ResponseEntity<ApiResponse<OrderResponse>> createOrder(@Valid @RequestBody OrderRequest orderRequest) {
@@ -117,15 +122,13 @@ public class CustomerController extends BaseController {
             }
 
             Order savedOrder = orderService.createOrder(order);
-            OrderResponse orderResponse = convertToOrderResponse(savedOrder);
-
-            return created(orderResponse);
+            return created(convertToOrderResponse(savedOrder));
 
         } catch (Exception e) {
-            return error("Failed to create order: " + e.getMessage());
+            log.error("Failed to create order: {}", e.getMessage(), e);
+            return error("Failed to create order");
         }
     }
-
 
     @PostMapping("/api/orders/{orderId}/items")
     @ResponseBody
@@ -135,14 +138,12 @@ public class CustomerController extends BaseController {
 
         try {
             Order updatedOrder = orderService.addItemToOrder(orderId, itemRequest.getMenuId(), itemRequest.getQuantity());
-            OrderResponse orderResponse = convertToOrderResponse(updatedOrder);
-            return success("Item added to order", orderResponse);
-
+            return success("Item added to order", convertToOrderResponse(updatedOrder));
         } catch (Exception e) {
-            return error("Failed to add item: " + e.getMessage());
+            log.error("Failed to add item to order {}: {}", orderId, e.getMessage(), e);
+            return error("Failed to add item");
         }
     }
-
 
     @DeleteMapping("/api/orders/{orderId}/items/{itemId}")
     @ResponseBody
@@ -152,14 +153,12 @@ public class CustomerController extends BaseController {
 
         try {
             Order updatedOrder = orderService.removeItemFromOrder(orderId, itemId);
-            OrderResponse orderResponse = convertToOrderResponse(updatedOrder);
-            return success("Item removed from order", orderResponse);
-
+            return success("Item removed from order", convertToOrderResponse(updatedOrder));
         } catch (Exception e) {
-            return error("Failed to remove item: " + e.getMessage());
+            log.error("Failed to remove item {} from order {}: {}", itemId, orderId, e.getMessage(), e);
+            return error("Failed to remove item");
         }
     }
-
 
     @PutMapping("/api/orders/{orderId}/items/{itemId}")
     @ResponseBody
@@ -170,14 +169,12 @@ public class CustomerController extends BaseController {
 
         try {
             Order updatedOrder = orderService.updateItemQuantity(orderId, itemId, quantity);
-            OrderResponse orderResponse = convertToOrderResponse(updatedOrder);
-            return success("Quantity updated", orderResponse);
-
+            return success("Quantity updated", convertToOrderResponse(updatedOrder));
         } catch (Exception e) {
-            return error("Failed to update quantity: " + e.getMessage());
+            log.error("Failed to update quantity for item {} in order {}: {}", itemId, orderId, e.getMessage(), e);
+            return error("Failed to update quantity");
         }
     }
-
 
     @GetMapping("/api/orders/{orderNumber}")
     @ResponseBody
@@ -185,16 +182,15 @@ public class CustomerController extends BaseController {
         try {
             Optional<Order> orderOpt = orderService.getOrderByNumber(orderNumber);
             if (orderOpt.isPresent()) {
-                OrderResponse orderResponse = convertToOrderResponse(orderOpt.get());
-                return success(orderResponse);
+                return success(convertToOrderResponse(orderOpt.get()));
             } else {
                 return notFound("Order not found");
             }
         } catch (Exception e) {
-            return error("Failed to get order: " + e.getMessage());
+            log.error("Failed to get order {}: {}", orderNumber, e.getMessage(), e);
+            return error("Failed to get order");
         }
     }
-
 
     @GetMapping("/api/orders/{orderNumber}/qr-code")
     @ResponseBody
@@ -205,8 +201,7 @@ public class CustomerController extends BaseController {
                 return notFound("Order not found");
             }
 
-            Order order = orderOpt.get();
-            String qrCode = paymentService.generatePaymentQRCode(order);
+            String qrCode = paymentService.generatePaymentQRCode(orderOpt.get());
 
             PaymentResponse paymentResponse = new PaymentResponse();
             paymentResponse.setSuccess(true);
@@ -215,16 +210,20 @@ public class CustomerController extends BaseController {
             paymentResponse.setMessage("QR code generated successfully");
 
             return success(paymentResponse);
-
         } catch (Exception e) {
-            return error("Failed to generate QR code: " + e.getMessage());
+            log.error("Failed to generate QR code for order {}: {}", orderNumber, e.getMessage(), e);
+            return error("Failed to generate QR code");
         }
     }
 
-
+    // FOR TESTING ONLY — disable in production via app.simulate-payment.enabled=false
     @PostMapping("/api/orders/{orderNumber}/simulate-payment")
     @ResponseBody
     public ResponseEntity<ApiResponse<PaymentResponse>> simulatePayment(@PathVariable String orderNumber) {
+        if (!simulatePaymentEnabled) {
+            return error("Payment simulation is disabled");
+        }
+
         try {
             Optional<Order> orderOpt = orderService.getOrderByNumber(orderNumber);
             if (orderOpt.isEmpty()) {
@@ -233,14 +232,20 @@ public class CustomerController extends BaseController {
 
             Order order = orderOpt.get();
 
+            if (order.getPaymentStatus() == Order.PaymentStatus.PAID) {
+                return error("Order has already been paid");
+            }
+
+            if (order.getStatus() == Order.OrderStatus.CANCELLED) {
+                return error("Cannot pay a cancelled order");
+            }
+
             order.setPaymentStatus(Order.PaymentStatus.PAID);
             order.setPaymentMethod(Order.PaymentMethod.QR_CODE);
             order.setStatus(Order.OrderStatus.CONFIRMED);
 
-            Order updatedOrder = orderService.createOrder(order);
+            Order updatedOrder = orderService.saveOrder(order);
 
-            // Auto-generate invoice for the paid order
-            // Use cashier ID if available, otherwise use null for customer self-service
             Long cashierId = updatedOrder.getCashier() != null ? updatedOrder.getCashier().getId() : null;
             invoiceService.generateInvoice(updatedOrder, cashierId);
 
@@ -250,12 +255,11 @@ public class CustomerController extends BaseController {
             paymentResponse.setMessage("Payment simulated successfully (TEST MODE)");
 
             return success(paymentResponse);
-
         } catch (Exception e) {
-            return error("Failed to simulate payment: " + e.getMessage());
+            log.error("Payment simulation failed for order {}: {}", orderNumber, e.getMessage(), e);
+            return error("Payment simulation failed");
         }
     }
-
 
     @PostMapping("/api/payments")
     @ResponseBody
@@ -281,78 +285,19 @@ public class CustomerController extends BaseController {
             paymentResponse.setMessage(paymentSuccess ? "Payment successful" : "Payment failed");
 
             if (paymentSuccess) {
-                // Generate invoice for customer order (cashier is null for customer_self orders)
                 Optional<Order> orderOpt = orderService.getOrderByNumber(paymentRequest.getOrderNumber());
                 if (orderOpt.isPresent()) {
                     invoiceService.generateInvoice(orderOpt.get(), null);
                 }
-
                 return success(paymentResponse);
             } else {
                 return error("Payment processing failed");
             }
 
         } catch (Exception e) {
-            return error("Payment error: " + e.getMessage());
+            log.error("Payment error for order {}: {}", paymentRequest.getOrderNumber(), e.getMessage(), e);
+            return error("Payment failed");
         }
     }
 
-
-
-    private MenuResponse convertToMenuResponse(Menu menu) {
-        MenuResponse response = new MenuResponse();
-        response.setId(menu.getId());
-        response.setName(menu.getName());
-        response.setDescription(menu.getDescription());
-        response.setPrice(menu.getPrice());
-        response.setImageUrl(menu.getImageUrl());
-        response.setAvailable(menu.getAvailable());
-        response.setIsPromo(menu.getIsPromo());
-        response.setPromoPrice(menu.getPromoPrice());
-        response.setCurrentPrice(menu.getCurrentPrice());
-
-        if (menu.getCategory() != null) {
-            CategoryResponse categoryResponse = new CategoryResponse();
-            categoryResponse.setId(menu.getCategory().getId());
-            categoryResponse.setName(menu.getCategory().getName());
-            response.setCategory(categoryResponse);
-        }
-
-        return response;
-    }
-
-    private OrderResponse convertToOrderResponse(Order order) {
-        OrderResponse response = new OrderResponse();
-        response.setId(order.getId());
-        response.setOrderNumber(order.getOrderNumber());
-        response.setTotal(order.getTotal());
-        response.setStatus(order.getStatus());
-        response.setOrderType(order.getOrderType());
-        response.setPaymentMethod(order.getPaymentMethod());
-        response.setPaymentStatus(order.getPaymentStatus());
-        response.setCustomerName(order.getCustomerName());
-        response.setCreatedAt(order.getCreatedAt());
-        response.setUpdatedAt(order.getUpdatedAt());
-
-        List<OrderItemResponse> itemResponses = order.getOrderItems().stream()
-                .map(this::convertToOrderItemResponse)
-                .collect(Collectors.toList());
-        response.setItems(itemResponses);
-
-        return response;
-    }
-
-    private OrderItemResponse convertToOrderItemResponse(OrderItem orderItem) {
-        OrderItemResponse response = new OrderItemResponse();
-        response.setId(orderItem.getId());
-        response.setQuantity(orderItem.getQuantity());
-        response.setPrice(orderItem.getPrice());
-        response.setSubtotal(orderItem.getSubtotal());
-
-        if (orderItem.getMenu() != null) {
-            response.setMenu(convertToMenuResponse(orderItem.getMenu()));
-        }
-
-        return response;
-    }
 }

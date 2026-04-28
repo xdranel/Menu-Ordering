@@ -8,6 +8,7 @@ import menuorderingapp.project.model.dto.CartItemRequest;
 import menuorderingapp.project.model.dto.CartItemResponse;
 import menuorderingapp.project.model.dto.CartResponse;
 import menuorderingapp.project.service.MenuService;
+import menuorderingapp.project.util.Constants;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -196,10 +197,14 @@ public class CartController extends BaseController {
                 .mapToInt(CartItem::getQuantity)
                 .sum();
 
+        BigDecimal taxAmount = subtotal.multiply(BigDecimal.valueOf(Constants.TAX_RATE));
+        BigDecimal total = subtotal.add(taxAmount);
+
         CartResponse response = new CartResponse();
         response.setItems(itemResponses);
         response.setSubtotal(subtotal);
-        response.setTotal(subtotal);
+        response.setTaxAmount(taxAmount);
+        response.setTotal(total);
         response.setTotalItems(totalItems);
 
         return response;

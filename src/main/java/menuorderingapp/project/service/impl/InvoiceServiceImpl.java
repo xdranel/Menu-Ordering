@@ -5,6 +5,7 @@ import menuorderingapp.project.repository.CashierRepository;
 import menuorderingapp.project.repository.InvoiceRepository;
 import menuorderingapp.project.repository.OrderRepository;
 import menuorderingapp.project.service.InvoiceService;
+import menuorderingapp.project.util.Constants;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,7 +58,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         }
         invoice.setPaymentMethod(paymentMethod);
 
-        invoice.setCreatedAt(order.getCreatedAt());
+        invoice.setCreatedAt(LocalDateTime.now());
 
         return invoiceRepository.save(invoice);
     }
@@ -106,7 +107,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     private BigDecimal calculateTax(java.math.BigDecimal amount) {
-        return amount.multiply(java.math.BigDecimal.valueOf(0.10));
+        return amount.multiply(java.math.BigDecimal.valueOf(Constants.TAX_RATE));
     }
 
     private String generateInvoiceContent(Invoice invoice) {

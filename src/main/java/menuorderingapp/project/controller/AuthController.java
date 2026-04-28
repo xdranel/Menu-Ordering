@@ -4,9 +4,9 @@ import menuorderingapp.project.model.Cashier;
 import menuorderingapp.project.model.dto.*;
 import menuorderingapp.project.service.AuthService;
 import menuorderingapp.project.service.CashierService;
+import menuorderingapp.project.util.JwtUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.ui.Model;
@@ -19,10 +19,12 @@ public class AuthController extends BaseController {
 
     private final AuthService authService;
     private final CashierService cashierService;
+    private final JwtUtil jwtUtil;
 
-    public AuthController(AuthService authService, CashierService cashierService) {
+    public AuthController(AuthService authService, CashierService cashierService, JwtUtil jwtUtil) {
         this.authService = authService;
         this.cashierService = cashierService;
+        this.jwtUtil = jwtUtil;
     }
 
     @GetMapping("/login")
@@ -41,40 +43,26 @@ public class AuthController extends BaseController {
     @PostMapping("/login")
     public String processLogin(@Valid @ModelAttribute LoginRequest loginRequest,
                                BindingResult bindingResult,
-                               Model model,
-                               HttpSession session) {
-
+                               Model model) {
         if (bindingResult.hasErrors()) {
             model.addAttribute("error", "Please fill in all required fields");
             return "auth/login";
         }
-
-        try {
-            String sessionToken = authService.login(loginRequest.getUsername(), loginRequest.getPassword());
-            Cashier cashier = authService.getCashierFromSession(sessionToken);
-
-            session.setAttribute("sessionToken", sessionToken);
-            session.setAttribute("cashier", convertToCashierDto(cashier));
-            session.setAttribute("cashierId", cashier.getId());
-
-            return "redirect:/cashier/dashboard";
-
-        } catch (Exception e) {
-            model.addAttribute("error", "Invalid username or password");
-            model.addAttribute("loginRequest", loginRequest);
-            return "auth/login";
-        }
+        // Spring Security's UsernamePasswordAuthenticationFilter intercepts this URL first.
+        model.addAttribute("error", "Invalid username or password");
+        model.addAttribute("loginRequest", loginRequest);
+        return "auth/login";
     }
 
     @PostMapping("/api/login")
     @ResponseBody
     public ResponseEntity<ApiResponse<LoginResponse>> apiLogin(@Valid @RequestBody LoginRequest loginRequest) {
         try {
-            String sessionToken = authService.login(loginRequest.getUsername(), loginRequest.getPassword());
-            Cashier cashier = authService.getCashierFromSession(sessionToken);
+            String token = authService.login(loginRequest.getUsername(), loginRequest.getPassword());
+            Cashier cashier = authService.getCashierFromSession(token);
 
             LoginResponse loginResponse = new LoginResponse();
-            loginResponse.setSessionToken(sessionToken);
+            loginResponse.setSessionToken(token);
             loginResponse.setCashier(convertToCashierDto(cashier));
             loginResponse.setMessage("Login successful");
 
@@ -87,37 +75,34 @@ public class AuthController extends BaseController {
 
     @PostMapping("/logout")
     public String logout(HttpSession session) {
-        String sessionToken = (String) session.getAttribute("sessionToken");
-        if (sessionToken != null) {
-            authService.logout(sessionToken);
-        }
         session.invalidate();
         return "redirect:/auth/login";
     }
 
     @PostMapping("/api/logout")
     @ResponseBody
-    public ResponseEntity<ApiResponse<Void>> apiLogout(HttpServletRequest request) {
-        String sessionToken = request.getHeader("X-Session-Token");
-        if (sessionToken != null) {
-            authService.logout(sessionToken);
+    public ResponseEntity<ApiResponse<Void>> apiLogout(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            authService.logout(authHeader.substring(7));
         }
         return success("Logged out successfully", null);
     }
 
     @GetMapping("/api/validate")
     @ResponseBody
-    public ResponseEntity<ApiResponse<CashierDto>> validateSession(HttpServletRequest request) {
-        String sessionToken = request.getHeader("X-Session-Token");
-        if (sessionToken == null) {
-            return unauthorized("No session token");
+    public ResponseEntity<ApiResponse<CashierDto>> validateSession(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return unauthorized("No token provided");
         }
 
+        String token = authHeader.substring(7);
         try {
-            Cashier cashier = authService.getCashierFromSession(sessionToken);
+            Cashier cashier = authService.getCashierFromSession(token);
             return success(convertToCashierDto(cashier));
         } catch (Exception e) {
-            return unauthorized("Invalid session");
+            return unauthorized("Invalid or expired token");
         }
     }
 

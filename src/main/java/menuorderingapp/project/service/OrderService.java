@@ -10,6 +10,8 @@ public interface OrderService {
 
     Order createOrder(Order order);
 
+    Order saveOrder(Order order);
+
     Optional<Order> getOrderById(Long id);
 
     Optional<Order> getOrderByNumber(String orderNumber);
@@ -21,8 +23,6 @@ public interface OrderService {
     List<Order> getOrdersByCashier(Long cashierId);
 
     Order updateOrderStatus(Long orderId, Order.OrderStatus status);
-
-    Order processPayment(Long orderId, Order.PaymentMethod paymentMethod);
 
     Order addItemToOrder(Long orderId, Long menuId, Integer quantity);
 

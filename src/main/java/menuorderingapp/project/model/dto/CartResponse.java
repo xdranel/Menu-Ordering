@@ -7,6 +7,7 @@ public class CartResponse {
 
     private List<CartItemResponse> items;
     private BigDecimal subtotal;
+    private BigDecimal taxAmount;
     private BigDecimal total;
     private int totalItems;
 
@@ -29,6 +30,14 @@ public class CartResponse {
 
     public void setSubtotal(BigDecimal subtotal) {
         this.subtotal = subtotal;
+    }
+
+    public BigDecimal getTaxAmount() {
+        return taxAmount;
+    }
+
+    public void setTaxAmount(BigDecimal taxAmount) {
+        this.taxAmount = taxAmount;
     }
 
     public BigDecimal getTotal() {

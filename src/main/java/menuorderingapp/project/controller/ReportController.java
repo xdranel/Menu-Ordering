@@ -1,9 +1,9 @@
 package menuorderingapp.project.controller;
 
-import jakarta.servlet.http.HttpSession;
 import menuorderingapp.project.model.dto.ApiResponse;
 import menuorderingapp.project.model.dto.ReportRequest;
 import menuorderingapp.project.service.ReportService;
+import menuorderingapp.project.util.SecurityUtils;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -27,35 +27,29 @@ public class ReportController extends BaseController {
         this.reportService = reportService;
     }
 
-
     @PostMapping("/sales")
     public ResponseEntity<ApiResponse<Map<String, Object>>> generateSalesReport(
-            @RequestBody ReportRequest reportRequest,
-            HttpSession session) {
+            @RequestBody ReportRequest reportRequest) {
 
-        if (session.getAttribute("cashier") == null) {
+        if (SecurityUtils.getCurrentCashier() == null) {
             return unauthorized("Not authenticated");
         }
 
         try {
             LocalDateTime startDate = reportRequest.getStartDate().atStartOfDay();
             LocalDateTime endDate = reportRequest.getEndDate().atTime(23, 59, 59);
-
             Map<String, Object> report = reportService.getSalesReport(startDate, endDate);
             return success(report);
-
         } catch (Exception e) {
-            return error("Failed to generate sales report: " + e.getMessage());
+            return error("Failed to generate sales report");
         }
     }
 
-
     @GetMapping("/daily")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getDailyReport(
-            @RequestParam String date,
-            HttpSession session) {
+            @RequestParam String date) {
 
-        if (session.getAttribute("cashier") == null) {
+        if (SecurityUtils.getCurrentCashier() == null) {
             return unauthorized("Not authenticated");
         }
 
@@ -63,59 +57,48 @@ public class ReportController extends BaseController {
             LocalDate reportDate = LocalDate.parse(date);
             Map<String, Object> report = reportService.getDailySalesReport(reportDate);
             return success(report);
-
         } catch (Exception e) {
-            return error("Failed to generate daily report: " + e.getMessage());
+            return error("Failed to generate daily report");
         }
     }
-
 
     @GetMapping("/top-items")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getTopSellingItems(
             @RequestParam String startDate,
-            @RequestParam String endDate,
-            HttpSession session) {
+            @RequestParam String endDate) {
 
-        if (session.getAttribute("cashier") == null) {
+        if (SecurityUtils.getCurrentCashier() == null) {
             return unauthorized("Not authenticated");
         }
 
         try {
             LocalDateTime start = LocalDate.parse(startDate).atStartOfDay();
             LocalDateTime end = LocalDate.parse(endDate).atTime(23, 59, 59);
-
             var topItems = reportService.getTopSellingItems(start, end);
             return success(topItems);
-
         } catch (Exception e) {
-            return error("Failed to get top items: " + e.getMessage());
+            return error("Failed to get top selling items");
         }
     }
-
 
     @GetMapping("/export")
     public ResponseEntity<Resource> exportReport(
             @RequestParam String startDate,
             @RequestParam String endDate,
-            @RequestParam String format,
-            HttpSession session) {
+            @RequestParam String format) {
 
-        if (session.getAttribute("cashier") == null) {
+        if (SecurityUtils.getCurrentCashier() == null) {
             return ResponseEntity.status(401).build();
         }
 
         try {
-
             LocalDateTime start = LocalDate.parse(startDate).atStartOfDay();
             LocalDateTime end = LocalDate.parse(endDate).atTime(23, 59, 59);
             Map<String, Object> report = reportService.getSalesReport(start, end);
 
-
             String pdfContent = generatePdfContent(report);
             byte[] pdfBytes = pdfContent.getBytes();
-
             ByteArrayResource resource = new ByteArrayResource(pdfBytes);
-
             String filename = String.format("sales-report-%s-to-%s.pdf", startDate, endDate);
 
             return ResponseEntity.ok()
@@ -123,15 +106,12 @@ public class ReportController extends BaseController {
                     .contentType(MediaType.APPLICATION_PDF)
                     .contentLength(pdfBytes.length)
                     .body(resource);
-
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
     }
 
     private String generatePdfContent(Map<String, Object> report) {
-
-
         StringBuilder content = new StringBuilder();
         content.append("SALES REPORT\n");
         content.append("Generated on: ").append(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)).append("\n\n");
@@ -145,7 +125,6 @@ public class ReportController extends BaseController {
         if (report.containsKey("averageOrderValue")) {
             content.append("Average Order Value: ").append(report.get("averageOrderValue")).append("\n");
         }
-
         return content.toString();
     }
 }

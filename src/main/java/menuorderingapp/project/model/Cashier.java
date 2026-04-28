@@ -142,7 +142,6 @@ public class Cashier implements Serializable {
         return "Cashier{" +
                 "id=" + id +
                 ", username='" + username + '\'' +
-                ", passwordHash='" + passwordHash + '\'' +
                 ", displayName='" + displayName + '\'' +
                 ", role=" + role +
                 ", isActive=" + isActive +

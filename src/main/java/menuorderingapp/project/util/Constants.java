@@ -1,6 +1,6 @@
 package menuorderingapp.project.util;
 
-public class Constants {
+public class    Constants {
 
     public static final String APP_NAME = "ChopChop Restaurant";
     public static final String CURRENCY = "IDR";
@@ -13,6 +13,7 @@ public class Constants {
     public static final String INVOICE_PREFIX = "INV-";
 
     public static final double TAX_RATE = 0.10;
+    public static final double CASH_ROUNDING_UNIT = 1000.0;
 
     public static final int DEFAULT_PAGE_SIZE = 20;
 

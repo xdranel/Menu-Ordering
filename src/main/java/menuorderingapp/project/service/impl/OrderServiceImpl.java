@@ -6,6 +6,7 @@ import menuorderingapp.project.repository.MenuRepository;
 import menuorderingapp.project.repository.OrderItemRepository;
 import menuorderingapp.project.repository.OrderRepository;
 import menuorderingapp.project.service.OrderService;
+import menuorderingapp.project.util.Constants;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +38,11 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public Order createOrder(Order order) {
         order.calculateTotal();
+        return orderRepository.save(order);
+    }
+
+    @Override
+    public Order saveOrder(Order order) {
         return orderRepository.save(order);
     }
 
@@ -77,18 +83,6 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
         order.setStatus(status);
-        return orderRepository.save(order);
-    }
-
-    @Override
-    public Order processPayment(Long orderId, Order.PaymentMethod paymentMethod) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
-
-        order.setPaymentMethod(paymentMethod);
-        order.setPaymentStatus(Order.PaymentStatus.PAID);
-        order.setStatus(Order.OrderStatus.CONFIRMED);
-
         return orderRepository.save(order);
     }
 
@@ -195,7 +189,7 @@ public class OrderServiceImpl implements OrderService {
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
         LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
         Double revenue = orderRepository.getTotalRevenueBetween(startOfDay, endOfDay);
-        return revenue != null ? revenue : 0.0;
+        return revenue != null ? revenue * (1 + Constants.TAX_RATE) : 0.0;
     }
 
     @Override

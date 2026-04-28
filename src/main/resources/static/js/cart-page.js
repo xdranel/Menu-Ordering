@@ -1,4 +1,5 @@
 // Cart page - loads cart from backend session
+const TAX_RATE = 0.10;
 
 document.addEventListener('DOMContentLoaded', function() {
     const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
@@ -101,8 +102,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const totalElement = document.getElementById('orderTotal');
 
         const subtotal = cartData.subtotal || 0;
-        const tax = subtotal * 0.10; // 10% tax
-        const total = subtotal + tax;
+        const tax = cartData.taxAmount || subtotal * TAX_RATE;
+        const total = cartData.total || subtotal + tax;
 
         if (subtotalElement) {
             subtotalElement.textContent = 'Rp ' + subtotal.toLocaleString('id-ID');

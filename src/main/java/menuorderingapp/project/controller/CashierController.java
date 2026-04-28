@@ -5,7 +5,10 @@ import menuorderingapp.project.model.dto.*;
 import menuorderingapp.project.service.*;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
+import menuorderingapp.project.util.Constants;
 import menuorderingapp.project.util.SecurityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -25,7 +28,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Controller
 @RequestMapping("/cashier")
-public class CashierController extends BaseController{
+public class CashierController extends BaseController {
+
+    private static final Logger log = LoggerFactory.getLogger(CashierController.class);
 
     private final OrderService orderService;
     private final MenuService menuService;
@@ -104,7 +109,8 @@ public class CashierController extends BaseController{
             return success(stats);
 
         } catch (Exception e) {
-            return error("Failed to fetch dashboard stats: " + e.getMessage());
+            log.error("Failed to fetch dashboard stats: {}", e.getMessage(), e);
+            return error("Failed to fetch dashboard stats");
         }
     }
 
@@ -142,7 +148,8 @@ public class CashierController extends BaseController{
             return success(orderResponses);
 
         } catch (Exception e) {
-            return error("Failed to fetch orders: " + e.getMessage());
+            log.error("Failed to fetch orders: {}", e.getMessage(), e);
+            return error("Failed to fetch orders");
         }
     }
 
@@ -164,7 +171,8 @@ public class CashierController extends BaseController{
             return success(orderResponses);
 
         } catch (Exception e) {
-            return error("Failed to fetch today's orders: " + e.getMessage());
+            log.error("Failed to fetch today's orders: {}", e.getMessage(), e);
+            return error("Failed to fetch today's orders");
         }
     }
 
@@ -191,7 +199,8 @@ public class CashierController extends BaseController{
             return success(orderResponses);
 
         } catch (Exception e) {
-            return error("Failed to fetch orders by date: " + e.getMessage());
+            log.error("Failed to fetch orders by date: {}", e.getMessage(), e);
+            return error("Failed to fetch orders by date");
         }
     }
 
@@ -243,7 +252,8 @@ public class CashierController extends BaseController{
             return created(orderResponse);
 
         } catch (Exception e) {
-            return error("Failed to create order: " + e.getMessage());
+            log.error("Failed to create order: {}", e.getMessage(), e);
+            return error("Failed to create order");
         }
     }
 
@@ -270,7 +280,8 @@ public class CashierController extends BaseController{
             return success("Order status updated", orderResponse);
 
         } catch (Exception e) {
-            return error("Failed to update order status: " + e.getMessage());
+            log.error("Failed to update order status for order {}: {}", orderId, e.getMessage(), e);
+            return error("Failed to update order status");
         }
     }
 
@@ -305,11 +316,14 @@ public class CashierController extends BaseController{
             paymentResponse.setOrderNumber(paymentRequest.getOrderNumber());
             paymentResponse.setMessage(paymentSuccess ? "Payment successful" : "Payment failed");
 
-            // Calculate change for cash payments
+            // Calculate change for cash payments (cashAmount - rounded post-tax total)
             if (paymentSuccess && paymentRequest.getPaymentMethod() == Order.PaymentMethod.CASH) {
                 Optional<Order> orderOpt = orderService.getOrderByNumber(paymentRequest.getOrderNumber());
                 if (orderOpt.isPresent()) {
-                    double change = paymentRequest.getCashAmount() - orderOpt.get().getTotal().doubleValue();
+                    double subtotal = orderOpt.get().getTotal().doubleValue();
+                    double exactAmount = subtotal * (1 + Constants.TAX_RATE);
+                    double roundedAmount = Math.ceil(exactAmount / Constants.CASH_ROUNDING_UNIT) * Constants.CASH_ROUNDING_UNIT;
+                    double change = paymentRequest.getCashAmount() - roundedAmount;
                     paymentResponse.setChange(change > 0 ? change : 0);
                 }
             }
@@ -333,7 +347,8 @@ public class CashierController extends BaseController{
             }
 
         } catch (Exception e) {
-            return error("Payment error: " + e.getMessage());
+            log.error("Payment error for order {}: {}", paymentRequest.getOrderNumber(), e.getMessage(), e);
+            return error("Payment failed");
         }
     }
 
@@ -352,18 +367,40 @@ public class CashierController extends BaseController{
     @ResponseBody
     public ResponseEntity<ApiResponse<SalesReportResponse>> getSalesReport(
             @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate,
-            HttpSession session) {
+            @RequestParam(required = false) String endDate) {
 
         if (!isAuthenticatedCashier()) {
             return unauthorized("Not authenticated");
         }
 
         try {
+            LocalDate start = startDate != null ? LocalDate.parse(startDate) : LocalDate.now();
+            LocalDate end = endDate != null ? LocalDate.parse(endDate) : LocalDate.now();
+
+            java.util.Map<String, Object> reportData = reportService.getSalesReport(
+                    start.atStartOfDay(), end.atTime(LocalTime.MAX));
+
             SalesReportResponse response = new SalesReportResponse();
+            response.setStartDate(start.atStartOfDay());
+            response.setEndDate(end.atTime(LocalTime.MAX));
+            response.setTotalRevenue((Double) reportData.get("totalRevenue"));
+            response.setTotalOrders((Long) reportData.get("totalOrders"));
+            response.setAverageOrderValue((Double) reportData.get("averageOrderValue"));
+
+            @SuppressWarnings("unchecked")
+            java.util.Map<Order.PaymentMethod, Double> rawMap =
+                    (java.util.Map<Order.PaymentMethod, Double>) reportData.get("revenueByPaymentMethod");
+            if (rawMap != null) {
+                java.util.Map<String, Double> stringKeyMap = new java.util.HashMap<>();
+                rawMap.forEach((k, v) -> stringKeyMap.put(k.name(), v));
+                response.setRevenueByPaymentMethod(stringKeyMap);
+            }
+
+            response.setGeneratedAt(LocalDateTime.now().toString());
             return success(response);
         } catch (Exception e) {
-            return error("Failed to generate report: " + e.getMessage());
+            log.error("Failed to generate report: {}", e.getMessage(), e);
+            return error("Failed to generate report");
         }
     }
 
@@ -383,21 +420,17 @@ public class CashierController extends BaseController{
             }
 
             Long cashierId = currentCashier.getCashierId();
-            System.out.println("Generating missing invoices for cashier ID: " + cashierId);
+            log.info("Generating missing invoices for cashier ID: {}", cashierId);
 
-            // Get all PAID orders
             List<Order> allOrders = orderService.getAllOrders();
             List<Order> paidOrders = allOrders.stream()
                     .filter(order -> order.getPaymentStatus() == Order.PaymentStatus.PAID)
                     .collect(Collectors.toList());
 
-            System.out.println("Found " + paidOrders.size() + " paid orders");
-
             int createdCount = 0;
             int skippedCount = 0;
 
             for (Order order : paidOrders) {
-                // Check if invoice already exists
                 Optional<Invoice> existingInvoice = invoiceService.getInvoiceByOrder(order);
                 if (existingInvoice.isEmpty()) {
                     invoiceService.generateInvoice(order, cashierId);
@@ -407,18 +440,17 @@ public class CashierController extends BaseController{
                 }
             }
 
+            log.info("Invoice generation complete — created: {}, skipped: {}", createdCount, skippedCount);
+
             Map<String, Object> result = new HashMap<>();
             result.put("totalPaidOrders", paidOrders.size());
             result.put("invoicesCreated", createdCount);
             result.put("invoicesSkipped", skippedCount);
 
-            System.out.println("Created " + createdCount + " invoices, skipped " + skippedCount);
-
             return success("Successfully generated missing invoices", result);
         } catch (Exception e) {
-            System.err.println("ERROR generating missing invoices: " + e.getMessage());
-            e.printStackTrace();
-            return error("Failed to generate missing invoices: " + e.getMessage());
+            log.error("Failed to generate missing invoices: {}", e.getMessage(), e);
+            return error("Failed to generate missing invoices");
         }
     }
 
@@ -430,29 +462,21 @@ public class CashierController extends BaseController{
             @RequestParam("endDate") String endDate,
             HttpSession session) {
 
-        System.out.println("=== GET INVOICES BY DATE RANGE ===");
-        System.out.println("Start Date: " + startDate);
-        System.out.println("End Date: " + endDate);
+        log.debug("Fetching invoices by date range: {} to {}", startDate, endDate);
 
         if (!isAuthenticatedCashier()) {
-            System.out.println("ERROR: Not authenticated");
             return unauthorized("Not authenticated");
         }
 
         try {
             List<Invoice> invoices = invoiceService.getInvoicesByDateRange(startDate, endDate);
-            System.out.println("Found " + invoices.size() + " invoices");
-
             List<InvoiceResponse> invoiceResponses = invoices.stream()
                     .map(this::convertToInvoiceResponse)
                     .collect(Collectors.toList());
-            System.out.println("Converted to " + invoiceResponses.size() + " responses");
-
             return success(invoiceResponses);
         } catch (Exception e) {
-            System.err.println("ERROR fetching invoices: " + e.getMessage());
-            e.printStackTrace();
-            return error("Failed to fetch invoices: " + e.getMessage());
+            log.error("Failed to fetch invoices for range {} to {}: {}", startDate, endDate, e.getMessage(), e);
+            return error("Failed to fetch invoices");
         }
     }
 
@@ -511,7 +535,8 @@ public class CashierController extends BaseController{
             return success("Menu availability updated", response);
 
         } catch (Exception e) {
-            return error("Failed to update menu: " + e.getMessage());
+            log.error("Failed to toggle availability for menu {}: {}", menuId, e.getMessage(), e);
+            return error("Failed to update menu availability");
         }
     }
 
@@ -559,7 +584,8 @@ public class CashierController extends BaseController{
             return created(response);
 
         } catch (Exception e) {
-            return error("Failed to create menu: " + e.getMessage());
+            log.error("Failed to create menu: {}", e.getMessage(), e);
+            return error("Failed to create menu");
         }
     }
 
@@ -627,7 +653,8 @@ public class CashierController extends BaseController{
             return success("Menu updated successfully", response);
 
         } catch (Exception e) {
-            return error("Failed to update menu: " + e.getMessage());
+            log.error("Failed to update menu {}: {}", menuId, e.getMessage(), e);
+            return error("Failed to update menu");
         }
     }
 
@@ -667,98 +694,14 @@ public class CashierController extends BaseController{
             return success("Menu berhasil dihapus", "Deleted");
 
         } catch (Exception e) {
-            return error("Failed to delete menu: " + e.getMessage());
+            log.error("Failed to delete menu {}: {}", menuId, e.getMessage(), e);
+            return error("Failed to delete menu");
         }
     }
 
     private boolean isAuthenticatedCashier() {
         return SecurityUtils.getCurrentCashier() != null;
     }
-    private MenuResponse convertToMenuResponse(Menu menu) {
-        MenuResponse response = new MenuResponse();
-        response.setId(menu.getId());
-        response.setName(menu.getName());
-        response.setDescription(menu.getDescription());
-        response.setPrice(menu.getPrice());
-        response.setImageUrl(menu.getImageUrl());
-        response.setAvailable(menu.getAvailable());
-        response.setIsPromo(menu.getIsPromo());
-        response.setPromoPrice(menu.getPromoPrice());
-        response.setCurrentPrice(menu.getCurrentPrice());
-
-        if (menu.getCategory() != null) {
-            CategoryResponse categoryResponse = new CategoryResponse();
-            categoryResponse.setId(menu.getCategory().getId());
-            categoryResponse.setName(menu.getCategory().getName());
-            response.setCategory(categoryResponse);
-        }
-
-        return response;
-    }
-
-    private OrderResponse convertToOrderResponse(Order order) {
-        OrderResponse response = new OrderResponse();
-        response.setId(order.getId());
-        response.setOrderNumber(order.getOrderNumber());
-        response.setTotal(order.getTotal());
-        response.setStatus(order.getStatus());
-        response.setOrderType(order.getOrderType());
-        response.setPaymentMethod(order.getPaymentMethod());
-        response.setPaymentStatus(order.getPaymentStatus());
-        response.setCustomerName(order.getCustomerName());
-        response.setCreatedAt(order.getCreatedAt());
-        response.setUpdatedAt(order.getUpdatedAt());
-
-        // Convert order items
-        List<OrderItemResponse> itemResponses = order.getOrderItems().stream()
-                .map(this::convertToOrderItemResponse)
-                .collect(Collectors.toList());
-        response.setItems(itemResponses);
-
-        return response;
-    }
-
-    private OrderItemResponse convertToOrderItemResponse(OrderItem orderItem) {
-        OrderItemResponse response = new OrderItemResponse();
-        response.setId(orderItem.getId());
-        response.setQuantity(orderItem.getQuantity());
-        response.setPrice(orderItem.getPrice());
-        response.setSubtotal(orderItem.getSubtotal());
-
-        if (orderItem.getMenu() != null) {
-            response.setMenu(convertToMenuResponse(orderItem.getMenu()));
-        }
-
-        return response;
-    }
-
-    private InvoiceResponse convertToInvoiceResponse(Invoice invoice) {
-        InvoiceResponse response = new InvoiceResponse();
-        response.setId(invoice.getId());
-        response.setInvoiceNumber(invoice.getInvoiceNumber());
-        response.setTotalAmount(invoice.getTotalAmount());
-        response.setTaxAmount(invoice.getTaxAmount());
-        response.setFinalAmount(invoice.getFinalAmount());
-        response.setPaymentMethod(invoice.getPaymentMethod());
-        response.setCreatedAt(invoice.getCreatedAt());
-
-        // Convert order
-        if (invoice.getOrder() != null) {
-            response.setOrder(convertToOrderResponse(invoice.getOrder()));
-        }
-
-        // Convert cashier
-        if (invoice.getCashier() != null) {
-            CashierDto cashierDto = new CashierDto();
-            cashierDto.setId(invoice.getCashier().getId());
-            cashierDto.setUsername(invoice.getCashier().getUsername());
-            cashierDto.setDisplayName(invoice.getCashier().getDisplayName());
-            response.setCashier(cashierDto);
-        }
-
-        return response;
-    }
-
     // Get All Categories
     @GetMapping("/api/categories")
     @ResponseBody
@@ -778,7 +721,8 @@ public class CashierController extends BaseController{
             return success(categoryResponses);
 
         } catch (Exception e) {
-            return error("Failed to fetch categories: " + e.getMessage());
+            log.error("Failed to fetch categories: {}", e.getMessage(), e);
+            return error("Failed to fetch categories");
         }
     }
 
@@ -805,9 +749,36 @@ public class CashierController extends BaseController{
             return "redirect:/cashier/settings";
 
         } catch (Exception e) {
-            // In case of error, redirect back with error handling
-            // You might want to add flash attributes here for error messages
-            return "redirect:/cashier/settings?error=" + e.getMessage();
+            log.error("Failed to create category: {}", e.getMessage(), e);
+            return "redirect:/cashier/settings?error=Failed+to+create+category";
+        }
+    }
+
+    // Create Category (JSON — for Flutter/API clients)
+    @PostMapping(value = "/api/categories", consumes = "application/json")
+    @ResponseBody
+    public ResponseEntity<ApiResponse<CategoryResponse>> createCategoryJson(
+            @Valid @RequestBody CategoryRequest categoryRequest) {
+
+        if (!isAuthenticatedCashier()) {
+            return unauthorized("Not authenticated");
+        }
+
+        try {
+            Category newCategory = new Category();
+            newCategory.setName(categoryRequest.getName());
+            newCategory.setDisplayOrder(categoryRequest.getDisplayOrder());
+            menuService.saveCategory(newCategory);
+
+            CategoryResponse response = new CategoryResponse();
+            response.setId(newCategory.getId());
+            response.setName(newCategory.getName());
+            response.setDisplayOrder(newCategory.getDisplayOrder());
+            return created(response);
+
+        } catch (Exception e) {
+            log.error("Failed to create category: {}", e.getMessage(), e);
+            return error("Failed to create category");
         }
     }
 
@@ -827,7 +798,8 @@ public class CashierController extends BaseController{
             return success("Category deleted successfully", null);
 
         } catch (Exception e) {
-            return error("Failed to delete category: " + e.getMessage());
+            log.error("Failed to delete category {}: {}", categoryId, e.getMessage(), e);
+            return error("Failed to delete category");
         }
     }
 
@@ -856,7 +828,8 @@ public class CashierController extends BaseController{
             return success(invoiceOpt.get());
 
         } catch (Exception e) {
-            return error("Failed to retrieve invoice: " + e.getMessage());
+            log.error("Failed to retrieve invoice for order {}: {}", orderNumber, e.getMessage(), e);
+            return error("Failed to retrieve invoice");
         }
     }
 
