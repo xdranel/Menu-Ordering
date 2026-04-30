@@ -262,25 +262,26 @@ public class CashierController extends BaseController {
     @ResponseBody
     public ResponseEntity<ApiResponse<OrderResponse>> updateOrderStatus(
             @PathVariable Long orderId,
-            @RequestBody Map<String, String> body) {
+            @RequestParam(required = false) String status,
+            @RequestBody(required = false) Map<String, String> body) {
 
         if (!isAuthenticatedCashier()) {
             return unauthorized("Not authenticated");
         }
 
         try {
-            String statusStr = body.get("status");
+            String statusStr = status != null ? status : (body != null ? body.get("status") : null);
             if (statusStr == null || statusStr.isBlank()) {
                 return error("Status field is required");
             }
-            Order.OrderStatus status;
+            Order.OrderStatus orderStatus;
             try {
-                status = Order.OrderStatus.valueOf(statusStr.toUpperCase());
+                orderStatus = Order.OrderStatus.valueOf(statusStr.toUpperCase());
             } catch (IllegalArgumentException e) {
                 return error("Invalid status value: " + statusStr);
             }
 
-            Order updatedOrder = orderService.updateOrderStatus(orderId, status);
+            Order updatedOrder = orderService.updateOrderStatus(orderId, orderStatus);
             OrderResponse orderResponse = convertToOrderResponse(updatedOrder);
 
             webSocketController.broadcastOrderUpdate(orderResponse);
