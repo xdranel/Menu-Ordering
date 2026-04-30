@@ -1,0 +1,1 @@
+- [Fix plan — bugs, security, consistency](project_fix_plan.md) — 24 tracked tasks (S/B/D/U categories) to fix before adding Flutter layer

@@ -31,10 +31,6 @@ jobs:
           tags: ghcr.io/xdranel/menu-ordering:latest
 
       - name: Deploy
-        env:
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
         run: |
           docker pull ghcr.io/xdranel/menu-ordering:latest
           docker stop menu-app || true

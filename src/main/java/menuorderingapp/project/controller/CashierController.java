@@ -262,18 +262,27 @@ public class CashierController extends BaseController {
     @ResponseBody
     public ResponseEntity<ApiResponse<OrderResponse>> updateOrderStatus(
             @PathVariable Long orderId,
-            @RequestParam Order.OrderStatus status,
-            HttpSession session) {
+            @RequestBody Map<String, String> body) {
 
         if (!isAuthenticatedCashier()) {
             return unauthorized("Not authenticated");
         }
 
         try {
+            String statusStr = body.get("status");
+            if (statusStr == null || statusStr.isBlank()) {
+                return error("Status field is required");
+            }
+            Order.OrderStatus status;
+            try {
+                status = Order.OrderStatus.valueOf(statusStr.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return error("Invalid status value: " + statusStr);
+            }
+
             Order updatedOrder = orderService.updateOrderStatus(orderId, status);
             OrderResponse orderResponse = convertToOrderResponse(updatedOrder);
 
-            // Broadcast order update via WebSocket
             webSocketController.broadcastOrderUpdate(orderResponse);
             webSocketController.broadcastDashboardUpdate();
 
@@ -806,9 +815,8 @@ public class CashierController extends BaseController {
     // Get Invoice by Order Number
     @GetMapping("/api/invoices/order/{orderNumber}")
     @ResponseBody
-    public ResponseEntity<ApiResponse<Invoice>> getInvoiceByOrderNumber(
-            @PathVariable String orderNumber,
-            HttpSession session) {
+    public ResponseEntity<ApiResponse<InvoiceResponse>> getInvoiceByOrderNumber(
+            @PathVariable String orderNumber) {
 
         if (!isAuthenticatedCashier()) {
             return unauthorized("Not authenticated");
@@ -825,7 +833,7 @@ public class CashierController extends BaseController {
                 return error("Invoice not found for this order");
             }
 
-            return success(invoiceOpt.get());
+            return success(convertToInvoiceResponse(invoiceOpt.get()));
 
         } catch (Exception e) {
             log.error("Failed to retrieve invoice for order {}: {}", orderNumber, e.getMessage(), e);
