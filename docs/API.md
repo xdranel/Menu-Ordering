@@ -1,6 +1,6 @@
-# API Documentation - ChopChop Restaurant
+# API Documentation
 
-REST API endpoints documentation for the Menu Ordering Application.
+REST API reference for the Menu Ordering Application (ChopChop Restaurant).
 
 ## Table of Contents
 
@@ -8,13 +8,13 @@ REST API endpoints documentation for the Menu Ordering Application.
 - [Authentication](#authentication)
 - [Response Format](#response-format)
 - [Customer API](#customer-api)
-- [Cashier API](#cashier-api)
 - [Cart API](#cart-api)
-- [Order API](#order-api)
-- [Payment API](#payment-api)
-- [Menu Management API](#menu-management-api)
+- [Cashier API](#cashier-api)
 - [Reports API](#reports-api)
+- [WebSocket](#websocket)
 - [Error Codes](#error-codes)
+
+---
 
 ## Base URL
 
@@ -22,13 +22,20 @@ REST API endpoints documentation for the Menu Ordering Application.
 http://localhost:8080
 ```
 
+---
+
 ## Authentication
 
-The application uses **session-based authentication** with Spring Security.
+The application supports two auth mechanisms that both populate the same Spring Security context — controllers do not distinguish between them.
 
-### Login
+### Browser (form login)
+Spring Security intercepts `POST /auth/login` and sets a session cookie on success.
+
+### API / Flutter (JWT)
+
+**Login**
 ```http
-POST /api/auth/login
+POST /auth/api/login
 Content-Type: application/json
 
 {
@@ -43,54 +50,52 @@ Content-Type: application/json
   "success": true,
   "message": "Login successful",
   "data": {
+    "sessionToken": "<jwt>",
     "cashier": {
       "id": 1,
       "username": "admin",
       "displayName": "Administrator",
-      "role": "ADMIN"
+      "role": "ADMIN",
+      "isActive": true
     },
-    "sessionToken": "uuid-session-token"
+    "message": "Login successful"
   }
 }
 ```
 
-### Logout
-```http
-POST /api/auth/logout
+Use the returned JWT in subsequent requests:
+```
+Authorization: Bearer <jwt>
 ```
 
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Logout successful"
-}
+**Validate token**
+```http
+GET /auth/api/validate
+Authorization: Bearer <jwt>
 ```
+
+**Logout**
+```http
+POST /auth/api/logout
+Authorization: Bearer <jwt>
+```
+
+---
 
 ## Response Format
 
-All API responses follow this standard format:
+All API responses use the `ApiResponse<T>` envelope:
 
-```json
-{
-  "success": boolean,
-  "message": "string",
-  "data": object|array,
-  "timestamp": "ISO 8601 datetime"
-}
-```
-
-### Success Response
 ```json
 {
   "success": true,
-  "message": "Operation successful",
-  "data": { ... },
+  "message": "string",
+  "data": {},
   "timestamp": "2025-01-01T12:00:00"
 }
 ```
 
-### Error Response
+On error:
 ```json
 {
   "success": false,
@@ -100,39 +105,22 @@ All API responses follow this standard format:
 }
 ```
 
+---
+
 ## Customer API
 
-### Get All Categories
-```http
-GET /api/categories
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "name": "SEMUA",
-      "displayOrder": 1
-    },
-    {
-      "id": 2,
-      "name": "PROMO",
-      "displayOrder": 2
-    }
-  ]
-}
-```
+No authentication required.
 
 ### Get Available Menus
 ```http
-GET /api/menus
+GET /customer/api/menus
 ```
 
-**Query Parameters:**
-- `category` (optional): Filter by category ID
+**Query parameters:**
+| Param | Type | Description |
+|-------|------|-------------|
+| `categoryId` | Long | Filter by category ID |
+| `search` | String | Search by name or description |
 
 **Response:**
 ```json
@@ -146,10 +134,7 @@ GET /api/menus
       "price": 35000,
       "currentPrice": 35000,
       "imageUrl": "/images/menu/nasi-goreng.jpg",
-      "category": {
-        "id": 4,
-        "name": "MAKANAN UTAMA"
-      },
+      "category": { "id": 4, "name": "MAKANAN UTAMA" },
       "available": true,
       "isPromo": false,
       "promoPrice": null
@@ -158,141 +143,47 @@ GET /api/menus
 }
 ```
 
-### Search Menus
-```http
-GET /api/menus/search?q={searchTerm}
-```
+> `currentPrice` returns `promoPrice` when `isPromo` is `true`, otherwise `price`.
 
-**Parameters:**
-- `q`: Search term (name or description)
-
-**Response:** Same as Get Available Menus
-
-### Get Promo Items
-```http
-GET /api/menus/promo
-```
-
-**Response:** Same as Get Available Menus
-
-## Cart API
-
-### Get Cart
-```http
-GET /api/cart
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "items": [
-      {
-        "menuId": 1,
-        "menuName": "Nasi Goreng Spesial",
-        "price": 35000,
-        "quantity": 2,
-        "subtotal": 70000
-      }
-    ],
-    "total": 70000,
-    "itemCount": 2
-  }
-}
-```
-
-### Add Item to Cart
-```http
-POST /api/cart/add
-Content-Type: application/json
-
-{
-  "menuId": 1,
-  "quantity": 2
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Item added to cart",
-  "data": {
-    "items": [...],
-    "total": 70000,
-    "itemCount": 2
-  }
-}
-```
-
-### Update Cart Item
-```http
-PUT /api/cart/update
-Content-Type: application/json
-
-{
-  "menuId": 1,
-  "quantity": 3
-}
-```
-
-### Remove from Cart
-```http
-DELETE /api/cart/remove/{menuId}
-```
-
-### Clear Cart
-```http
-DELETE /api/cart/clear
-```
-
-## Order API
+---
 
 ### Create Order
 ```http
-POST /api/orders
+POST /customer/api/orders
 Content-Type: application/json
 
 {
   "customerName": "John Doe",
-  "orderType": "CUSTOMER_SELF",
-  "tableNumber": "5",
-  "notes": "Extra spicy",
   "items": [
-    {
-      "menuId": 1,
-      "quantity": 2
-    }
+    { "menuId": 1, "quantity": 2 }
   ]
 }
 ```
-
-**Order Types:**
-- `CUSTOMER_SELF`
-- `CASHIER_ASSISTED`
 
 **Response:**
 ```json
 {
   "success": true,
-  "message": "Order created successfully",
   "data": {
     "id": 1,
-    "orderNumber": "ORD-20250101-001",
+    "orderNumber": "ORD-A1B2C3D4",
     "customerName": "John Doe",
     "total": 70000,
     "status": "PENDING",
-    "paymentStatus": "UNPAID",
+    "paymentStatus": "PENDING",
     "orderType": "CUSTOMER_SELF",
     "createdAt": "2025-01-01T12:00:00"
   }
 }
 ```
 
+> `total` is always pre-tax. Tax (10%) is added only on the invoice.
+
+---
+
 ### Get Order by Number
 ```http
-GET /api/orders/{orderNumber}
+GET /customer/api/orders/{orderNumber}
 ```
 
 **Response:**
@@ -301,11 +192,11 @@ GET /api/orders/{orderNumber}
   "success": true,
   "data": {
     "id": 1,
-    "orderNumber": "ORD-20250101-001",
+    "orderNumber": "ORD-A1B2C3D4",
     "customerName": "John Doe",
     "total": 70000,
     "status": "PENDING",
-    "paymentStatus": "UNPAID",
+    "paymentStatus": "PENDING",
     "orderItems": [
       {
         "id": 1,
@@ -319,43 +210,34 @@ GET /api/orders/{orderNumber}
 }
 ```
 
-## Payment API
+---
 
-### Process Cash Payment
+### Add Item to Order
 ```http
-POST /api/payment/cash
+POST /customer/api/orders/{orderId}/items
 Content-Type: application/json
 
 {
-  "orderNumber": "ORD-20250101-001",
-  "amountTendered": 100000
+  "menuId": 2,
+  "quantity": 1
 }
 ```
 
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Payment processed successfully",
-  "data": {
-    "orderNumber": "ORD-20250101-001",
-    "paymentMethod": "CASH",
-    "total": 70000,
-    "amountTendered": 100000,
-    "change": 30000,
-    "paymentStatus": "PAID"
-  }
-}
-```
-
-### Generate QR Code
+### Update Item Quantity
 ```http
-POST /api/payment/qr-code
-Content-Type: application/json
+PUT /customer/api/orders/{orderId}/items/{itemId}?quantity=3
+```
 
-{
-  "orderNumber": "ORD-20250101-001"
-}
+### Remove Item from Order
+```http
+DELETE /customer/api/orders/{orderId}/items/{itemId}
+```
+
+---
+
+### Get QR Code for Order
+```http
+GET /customer/api/orders/{orderNumber}/qr-code
 ```
 
 **Response:**
@@ -363,31 +245,135 @@ Content-Type: application/json
 {
   "success": true,
   "data": {
-    "qrCode": "data:image/png;base64,iVBORw0KG...",
-    "orderNumber": "ORD-20250101-001",
-    "amount": 70000
+    "orderNumber": "ORD-A1B2C3D4",
+    "qrCodeImage": "data:image/png;base64,iVBORw0KG...",
+    "message": "QR code generated successfully"
   }
 }
 ```
 
-### Process QR Payment
+---
+
+### Process Payment (Customer)
 ```http
-POST /api/payment/qr
+POST /customer/api/payments
 Content-Type: application/json
 
 {
-  "orderNumber": "ORD-20250101-001",
+  "orderNumber": "ORD-A1B2C3D4",
+  "paymentMethod": "CASH",
+  "cashAmount": 100000
+}
+```
+
+For QR:
+```json
+{
+  "orderNumber": "ORD-A1B2C3D4",
+  "paymentMethod": "QR_CODE",
   "qrData": "payment_data_string"
 }
 ```
 
+**Payment methods:** `CASH`, `QR_CODE`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "success": true,
+    "orderNumber": "ORD-A1B2C3D4",
+    "message": "Payment successful"
+  }
+}
+```
+
+> Invoice is auto-generated on successful payment.
+
+---
+
+### Simulate Payment (Test only)
+```http
+POST /customer/api/orders/{orderNumber}/simulate-payment
+```
+
+Only available when `SIMULATE_PAYMENT_ENABLED=true` (default in dev). Disable in production via `.env`.
+
+---
+
+## Cart API
+
+Session-based. Cart is stored server-side in `HttpSession`; data is lost when the session expires. For Flutter, maintain cart client-side and submit items directly to `POST /customer/api/orders`.
+
+### Get Cart
+```http
+GET /customer/api/cart
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "menuId": 1,
+        "menuName": "Nasi Goreng Spesial",
+        "price": 35000,
+        "quantity": 2,
+        "subtotal": 70000,
+        "imageUrl": "/images/menu/nasi-goreng.jpg"
+      }
+    ],
+    "subtotal": 70000,
+    "taxAmount": 7000,
+    "total": 77000,
+    "totalItems": 2
+  }
+}
+```
+
+### Get Cart Item Count
+```http
+GET /customer/api/cart/count
+```
+
+### Add Item to Cart
+```http
+POST /customer/api/cart/add
+Content-Type: application/json
+
+{
+  "menuId": 1,
+  "quantity": 2
+}
+```
+
+### Update Cart Item Quantity
+```http
+PUT /customer/api/cart/update/{menuId}?quantity=3
+```
+
+### Remove Item from Cart
+```http
+DELETE /customer/api/cart/remove/{menuId}
+```
+
+### Clear Cart
+```http
+DELETE /customer/api/cart/clear
+```
+
+---
+
 ## Cashier API
 
-****Authentication Required:** All cashier endpoints require valid cashier session.
+All cashier endpoints require authentication (browser session cookie or `Authorization: Bearer <jwt>`).
 
-### Get Dashboard Stats
+### Dashboard Stats
 ```http
-GET /api/cashier/dashboard/stats
+GET /cashier/api/dashboard/stats
 ```
 
 **Response:**
@@ -396,44 +382,52 @@ GET /api/cashier/dashboard/stats
   "success": true,
   "data": {
     "todayRevenue": 1500000,
-    "todayOrders": 45,
+    "todayOrdersCount": 45,
     "pendingOrders": 8,
-    "activeCashiers": 3
+    "availableMenus": 24,
+    "recentOrders": [ ... ]
   }
 }
 ```
 
-### Get All Orders
+> `todayRevenue` is pre-tax (sum of `Order.total`).
+
+---
+
+### Orders
+
+**Get all orders:**
 ```http
-GET /api/cashier/orders
+GET /cashier/api/orders/all
 ```
 
-**Query Parameters:**
-- `status` (optional): PENDING, CONFIRMED, PREPARING, READY, COMPLETED, CANCELLED
+**Get today's orders:**
+```http
+GET /cashier/api/orders/today
+```
 
-**Response:**
-```json
+**Get orders by date:**
+```http
+GET /cashier/api/orders/by-date?date=2025-01-01
+```
+
+**Create cashier-assisted order:**
+```http
+POST /cashier/api/orders
+Authorization: Bearer <jwt>
+Content-Type: application/json
+
 {
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "orderNumber": "ORD-20250101-001",
-      "customerName": "John Doe",
-      "total": 70000,
-      "status": "PENDING",
-      "paymentStatus": "UNPAID",
-      "orderType": "CUSTOMER_SELF",
-      "tableNumber": "5",
-      "createdAt": "2025-01-01T12:00:00"
-    }
+  "customerName": "John Doe",
+  "items": [
+    { "menuId": 1, "quantity": 2 }
   ]
 }
 ```
 
-### Update Order Status
+**Update order status:**
 ```http
-PUT /api/cashier/orders/{orderId}/status
+PUT /cashier/api/orders/{orderId}/status
 Content-Type: application/json
 
 {
@@ -441,78 +435,93 @@ Content-Type: application/json
 }
 ```
 
-**Valid Status Transitions:**
-- PENDING → CONFIRMED
-- CONFIRMED → PREPARING
-- PREPARING → READY
-- READY → COMPLETED
-- Any → CANCELLED
+Valid status values: `PENDING`, `CONFIRMED`, `PREPARING`, `READY`, `COMPLETED`, `CANCELLED`
 
-### Process Order Payment
+---
+
+### Payments
+
 ```http
-POST /api/cashier/orders/{orderId}/payment
+POST /cashier/api/payments
+Authorization: Bearer <jwt>
 Content-Type: application/json
 
 {
+  "orderNumber": "ORD-A1B2C3D4",
   "paymentMethod": "CASH",
-  "amountTendered": 100000
+  "cashAmount": 100000
 }
 ```
 
-**Payment Methods:**
-- `CASH`
-- `QR_CODE`
-- `CARD`
-
-### Generate Invoice
-```http
-POST /api/cashier/orders/{orderId}/invoice
-```
-
-**Response:**
+**Response (cash payment):**
 ```json
 {
   "success": true,
   "data": {
-    "invoiceNumber": "INV-20250101-001",
-    "orderNumber": "ORD-20250101-001",
-    "totalAmount": 70000,
-    "taxAmount": 7000,
-    "finalAmount": 77000,
-    "cashier": "Administrator",
-    "createdAt": "2025-01-01T12:00:00"
+    "success": true,
+    "orderNumber": "ORD-A1B2C3D4",
+    "message": "Payment successful",
+    "change": 13500
   }
 }
 ```
 
-## Menu Management API
+> Cash change is calculated as: `cashAmount - ceil((order.total * 1.1) / 500) * 500`
+>
+> Invoice is auto-generated on success.
 
-****Admin Access Required**
+---
 
-### Get All Menus (Admin)
+### Invoices
+
+**Get invoices by date range:**
 ```http
-GET /api/cashier/menus
+GET /cashier/api/invoices/by-date?startDate=2025-01-01&endDate=2025-01-31
 ```
 
-### Create Menu
+**Get invoice by order number:**
 ```http
-POST /api/cashier/menus
+GET /cashier/api/invoices/order/{orderNumber}
+```
+
+**Download invoice PDF:**
+```http
+GET /cashier/api/invoices/{invoiceId}/pdf
+```
+Returns `application/pdf`.
+
+**Generate missing invoices (for paid orders without one):**
+```http
+POST /cashier/api/invoices/generate-missing
+```
+
+---
+
+### Menu Management
+
+> To list menus as JSON, use `GET /customer/api/menus` (no auth required). The cashier settings page loads menus server-side via Thymeleaf.
+
+**Create menu:**
+```http
+POST /cashier/api/menus
+Authorization: Bearer <jwt>
 Content-Type: application/json
 
 {
   "name": "New Dish",
-  "description": "Description here",
+  "description": "Description",
   "price": 45000,
   "categoryId": 4,
   "imageUrl": "/images/menu/new-dish.jpg",
   "available": true,
-  "isPromo": false
+  "isPromo": false,
+  "promoPrice": null
 }
 ```
 
-### Update Menu
+**Update menu:**
 ```http
-PUT /api/cashier/menus/{menuId}
+PUT /cashier/api/menus/{menuId}
 Content-Type: application/json
 
 {
@@ -526,19 +535,23 @@ Content-Type: application/json
 }
 ```
 
-### Toggle Menu Availability
+**Toggle menu availability:**
 ```http
-PUT /api/cashier/menus/{menuId}/toggle-availability
+PUT /cashier/api/menus/{menuId}/availability
 ```
 
-### Delete Menu
+**Delete menu:**
 ```http
-DELETE /api/cashier/menus/{menuId}
+DELETE /cashier/api/menus/{menuId}
 ```
 
-### Get Menu Audit Logs
+---
+
+### Category Management
+
+**Get all categories:**
 ```http
-GET /api/cashier/menus/{menuId}/audit-logs
+GET /cashier/api/categories
 ```
 
 **Response:**
@@ -546,24 +559,35 @@ GET /api/cashier/menus/{menuId}/audit-logs
 {
   "success": true,
   "data": [
-    {
-      "id": 1,
-      "menuName": "Nasi Goreng Spesial",
-      "action": "PRICE_CHANGED",
-      "cashier": "Administrator",
-      "oldValues": "{\"price\":35000}",
-      "newValues": "{\"price\":40000}",
-      "createdAt": "2025-01-01T12:00:00"
-    }
+    { "id": 1, "name": "SEMUA", "displayOrder": 1 },
+    { "id": 2, "name": "PROMO", "displayOrder": 2 }
   ]
 }
 ```
 
+**Create category (JSON — for API/Flutter):**
+```http
+POST /cashier/api/categories
+Content-Type: application/json
+
+{
+  "name": "MINUMAN",
+  "displayOrder": 5
+}
+```
+
+**Delete category:**
+```http
+DELETE /cashier/api/categories/{categoryId}
+```
+
+---
+
 ## Reports API
 
-****Authentication Required**
+All require authentication.
 
-### Generate Sales Report
+### Sales Report
 ```http
 POST /api/reports/sales
 Content-Type: application/json
@@ -579,8 +603,6 @@ Content-Type: application/json
 {
   "success": true,
   "data": {
-    "startDate": "2025-01-01",
-    "endDate": "2025-01-31",
     "totalRevenue": 15000000,
     "totalOrders": 450,
     "averageOrderValue": 33333,
@@ -592,12 +614,19 @@ Content-Type: application/json
 }
 ```
 
-### Get Daily Report
+> Revenue figures are post-tax (multiplied by 1.1 in `ReportServiceImpl`).
+
+Also available via:
+```http
+GET /cashier/api/reports/sales?startDate=2025-01-01&endDate=2025-01-31
+```
+
+### Daily Report
 ```http
 GET /api/reports/daily?date=2025-01-01
 ```
 
-### Get Top Selling Items
+### Top Selling Items
 ```http
 GET /api/reports/top-items?startDate=2025-01-01&endDate=2025-01-31
 ```
@@ -608,10 +637,7 @@ GET /api/reports/top-items?startDate=2025-01-01&endDate=2025-01-31
   "success": true,
   "data": [
     {
-      "menu": {
-        "id": 1,
-        "name": "Nasi Goreng Spesial"
-      },
+      "menu": { "id": 1, "name": "Nasi Goreng Spesial" },
       "quantity": 150,
       "revenue": 5250000
     }
@@ -624,44 +650,49 @@ GET /api/reports/top-items?startDate=2025-01-01&endDate=2025-01-31
 GET /api/reports/export?startDate=2025-01-01&endDate=2025-01-31&format=pdf
 ```
 
-**Query Parameters:**
-- `startDate`: Start date (YYYY-MM-DD)
-- `endDate`: End date (YYYY-MM-DD)
-- `format`: pdf (currently only PDF supported)
+Returns a PDF file download.
 
-**Response:** PDF file download
+---
 
-## WebSocket API
+## WebSocket
 
-### Connect to WebSocket
+Used by the cashier frontend for real-time order updates.
+
 ```javascript
 const socket = new SockJS('/ws');
 const stompClient = Stomp.over(socket);
 
 stompClient.connect({}, function(frame) {
-    console.log('Connected: ' + frame);
-
-    // Subscribe to order updates
     stompClient.subscribe('/topic/orders', function(message) {
         const order = JSON.parse(message.body);
-        console.log('New order:', order);
     });
 
-    // Subscribe to dashboard updates
     stompClient.subscribe('/topic/dashboard', function(message) {
-        console.log('Dashboard update:', message.body);
+        // Dashboard stats changed, refetch /cashier/api/dashboard/stats
     });
 });
 ```
 
-### WebSocket Topics
-- `/topic/orders` - Real-time order updates
-- `/topic/dashboard` - Dashboard statistics updates
-- `/topic/pong` - Ping/pong for connection testing
+**Topics:**
+| Topic | Payload |
+|-------|---------|
+| `/topic/orders` | `OrderResponse` — broadcast on order create, status change, or payment |
+| `/topic/dashboard` | String trigger — broadcast after any order/payment change |
 
-### Send Message
-```javascript
-stompClient.send("/app/ping", {}, "test message");
-```
+---
 
-**Last Updated:** 31-12-2025
+## Error Codes
+
+| HTTP Status | Meaning |
+|-------------|---------|
+| 200 | Success |
+| 201 | Created |
+| 400 | Bad request / validation error |
+| 401 | Not authenticated |
+| 403 | Access denied (CSRF or role) |
+| 404 | Resource not found |
+| 500 | Internal server error |
+
+---
+
+**Last Updated:** 2026-05-02

@@ -1,37 +1,37 @@
 # Restaurant Menu Ordering Application
 
-A complete restaurant ordering system built with Spring Boot, featuring real-time order management, cashier dashboard, and customer self-service ordering.
+A restaurant ordering system built with Spring Boot, featuring real-time order management, cashier dashboard, and customer self-service ordering.
 
 ## Features
 
 ### Customer Features
-- Browse menu by categories
-- Search and filter menu items
-- Shopping cart with real-time price calculation
-- Multiple payment methods Cash or QR Code(Just a Placeholder)
-- Responsive design for mobile and desktop
+- Browse menu by categories with search and filter
+- Shopping cart with real-time price calculation (subtotal, tax, total)
+- Multiple payment methods: Cash or QR Code
 - Order tracking with order numbers
 
 ### Cashier Features
 - Real-time dashboard with statistics (revenue, orders, pending count)
-- Order management with status filtering
-- Real-time order updates via WebSocket
-- Process payments and generate invoices
+- Order management with status updates
+- Real-time order updates via WebSocket/STOMP
+- Process payments and auto-generate invoices
 - Sales reports with date range filtering
-- Role-based access control (Admin/Cashier)
+- Menu and category management with audit logging
 
 ### Technical Features
+- Dual auth: browser session (Spring Security) + JWT for API/Flutter clients
 - Real-time updates using WebSocket/STOMP
-- Secure authentication with BCrypt password hashing
+- BCrypt password hashing
 - Database migrations with Flyway
-- Comprehensive audit logging for menu changes
-- RESTful API architecture
+- Audit logging for menu changes
+- CORS support for Flutter/API clients
 
 ## Tech Stack
 
 **Backend:** Spring Boot 3.5.6, Java 21, Spring Security, MySQL 8.0, Hibernate, Flyway  
 **Frontend:** Thymeleaf, JavaScript, CSS3, STOMP.js  
-**Tools:** Maven, ZXing (QR codes), BCrypt
+**Auth:** BCrypt, Spring Security sessions, JWT (HS256)  
+**Tools:** Maven, ZXing (QR codes)
 
 ## Prerequisites
 
@@ -52,15 +52,19 @@ A complete restaurant ordering system built with Spring Boot, featuring real-tim
    mysql -u root -p -e "CREATE DATABASE restaurant_db;"
    ```
 
-3. **Configure database**
+3. **Configure environment**
 
-   Edit `src/main/resources/application.properties`:
-   ```properties
-   spring.datasource.password=your_mysql_password
-   spring.flyway.enabled=true
+   Copy `.env.example` to `.env` and fill in your values:
+   ```bash
+   cp .env.example .env
    ```
 
-   > **Important:** Set `spring.flyway.enabled=true` for the **first run** to create tables and insert sample data. After the first successful run, you can set it to `false` if you don't want migrations to run on every startup.
+   Minimum required changes in `.env`:
+   ```
+   DB_USERNAME=root
+   DB_PASSWORD=your_mysql_password
+   JWT_SECRET=your-random-256-bit-secret
+   ```
 
 4. **Run application**
    ```bash
@@ -68,10 +72,10 @@ A complete restaurant ordering system built with Spring Boot, featuring real-tim
    ```
 
 5. **Access application**
-    - Customer: http://localhost:8080
-    - Cashier: http://localhost:8080/cashier/login
+   - Customer: http://localhost:8080/customer/menu
+   - Cashier login: http://localhost:8080/auth/login
 
-See [docs/INSTALLATION.md](docs/INSTALLATION.md) for detailed local setup.
+See [docs/INSTALLATION.md](docs/INSTALLATION.md) for detailed setup including Docker and troubleshooting.
 
 ## Project Structure
 
@@ -79,22 +83,22 @@ See [docs/INSTALLATION.md](docs/INSTALLATION.md) for detailed local setup.
 Menu-Ordering/
 ├── src/main/
 │   ├── java/menuorderingapp/project/
-│   │   ├── config/           # Spring configuration
-│   │   ├── controller/       # REST controllers
+│   │   ├── config/           # Spring configuration (Security, WebSocket, CORS, etc.)
+│   │   ├── controller/       # Controllers (Customer, Cashier, Auth, Cart, Report)
 │   │   ├── model/            # Entity models & DTOs
 │   │   ├── repository/       # JPA repositories
-│   │   ├── security/         # Security components
+│   │   ├── security/         # Spring Security + JWT filter
 │   │   ├── service/          # Business logic
-│   │   └── util/             # Utility classes
+│   │   └── util/             # Constants, SecurityUtils, JwtUtil
 │   └── resources/
 │       ├── db/migration/    # Flyway SQL migrations
 │       ├── static/          # CSS, JS, images
 │       ├── templates/       # Thymeleaf templates
 │       └── application.properties
-├── docs/                    # Documentation
+├── docs/
 │   ├── INSTALLATION.md      # Detailed setup guide
 │   └── API.md               # API reference
-└── pom.xml                  # Maven configuration
+└── pom.xml
 ```
 
 ## Documentation
@@ -102,29 +106,27 @@ Menu-Ordering/
 - **[INSTALLATION.md](docs/INSTALLATION.md)** - Detailed installation guide
 - **[API.md](docs/API.md)** - REST API reference
 
-## Security Features
+## Security
 
 - BCrypt password hashing (strength: 10)
-- Session-based authentication (8-hour timeout)
-- CSRF protection enabled
-- Role-based access control (RBAC)
+- Session-based auth for browser (8-hour timeout, HttpOnly/SameSite cookies)
+- JWT (HS256) for API/Flutter clients — secret from `JWT_SECRET` env var
+- CSRF enabled for browser routes; disabled for `/api/**` paths
+- Role-based access control (ADMIN / CASHIER)
 - SQL injection prevention via JPA
 - XSS protection via Thymeleaf
-- Secure cookies (HttpOnly, Secure, SameSite)
-- Environment-based configuration for sensitive data
 
 ## Troubleshooting
 
 **Port already in use:**
 ```bash
 lsof -ti:8080 | xargs kill -9
-# Or change port in application.properties:
-# server.port=9090
+# Or set SERVER_PORT=9090 in .env
 ```
 
 **Database connection error:**
 - Verify MySQL is running: `systemctl status mysql`
-- Check credentials in `application.properties`
+- Check `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` in `.env`
 
 **Flyway migration error:**
 ```bash
