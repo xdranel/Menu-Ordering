@@ -62,6 +62,7 @@ public class SecurityConfig {
                                 "/auth/api/login",
                                 "/api/menus",
                                 "/api/categories",
+                                "/cashier/api/categories",
                                 "/ws/**",
                                 "/setup/**",
                                 "/static/**",
